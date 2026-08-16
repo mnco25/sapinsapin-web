@@ -212,6 +212,22 @@ function Nav({ theme, onToggleTheme }) {
   const activeId = useActiveSection()
   const linksRef = useRef(null)
   const menuRef = useRef(null)
+  const headerRef = useRef(null)
+  const [hidden, setHidden] = useState(false)
+
+  // The frosted band behind the header (.top-scrim) has to stop exactly at
+  // the pill's bottom edge — any further and it blurs page content that has
+  // nothing to do with the nav. Measuring the real box beats a breakpoint
+  // constant: it stays correct even if the pill's content ever wraps.
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header || typeof ResizeObserver === 'undefined') return undefined
+    const setHeight = () => document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`)
+    setHeight()
+    const observer = new ResizeObserver(setHeight)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
 
   // Slide the indicator pill under whichever link is active.
   const positionPill = useCallback(() => {
@@ -236,20 +252,56 @@ function Nav({ theme, onToggleTheme }) {
     return () => observer.disconnect()
   }, [positionPill])
 
-  // Condense the bar once the page has moved off the top.
+  // Condense the bar once the page has moved off the top, and — on phones
+  // only — slide it out of the way on a downward scroll and bring it back on
+  // the way up. Desktop and tablet keep the bar fixed in place; a header that
+  // vanishes under a mouse cursor is disorienting in a way it isn't on touch.
   useEffect(() => {
     let frame = 0
+    let lastY = window.scrollY
+    const mobileQuery = window.matchMedia('(max-width: 767px)')
     const onScroll = () => {
       if (frame) return
       frame = requestAnimationFrame(() => {
-        document.documentElement.dataset.scrolled = String(window.scrollY > 8)
+        const y = Math.max(0, window.scrollY)
+        document.documentElement.dataset.scrolled = String(y > 8)
+
+        if (mobileQuery.matches) {
+          const delta = y - lastY
+          if (y < 48) setHidden(false)
+          else if (delta > 6) { setHidden(true); closeMenus() }
+          else if (delta < -6) setHidden(false)
+        } else if (hidden) {
+          setHidden(false)
+        }
+        lastY = y
         frame = 0
       })
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame) }
+    // A resize across the mobile breakpoint (rotation, DevTools) shouldn't
+    // leave the bar stuck off-screen on the wider layout.
+    const onResize = () => { if (!mobileQuery.matches) setHidden(false) }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(frame)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const closeMenus = () => {
+    if (menuRef.current) menuRef.current.open = false
+  }
+
+  // .top-scrim lives outside <Nav> as a sibling in App(), so it can't read
+  // this component's `hidden` state directly — mirror it onto the root
+  // element instead.
+  useEffect(() => {
+    document.documentElement.dataset.navHidden = String(hidden)
+  }, [hidden])
 
   // Dismiss the mobile menu on outside click or Escape.
   useEffect(() => {
@@ -269,7 +321,11 @@ function Nav({ theme, onToggleTheme }) {
     <a key={id} href={`#${id}`} data-active={activeId === id} onClick={() => { if (menuRef.current) menuRef.current.open = false }}>{label}</a>
   ))
 
-  return <header className="sticky top-0 z-50 mx-auto max-w-[1440px] px-4 pt-3 sm:px-6 lg:px-9">
+  return <header
+    ref={headerRef}
+    data-hidden={hidden}
+    className="site-header sticky top-0 z-50 mx-auto max-w-[1440px] px-4 pt-3 sm:px-6 lg:px-9"
+  >
     <nav className="nav-shell flex min-h-[60px] items-center justify-between gap-2 rounded-2xl px-3.5 sm:px-5" aria-label="Main navigation">
       <a href="#top" className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
         <Mark className="h-[1.85rem] w-[2rem]" />
@@ -648,8 +704,8 @@ function App() {
   }, [theme])
 
   // Circular wipe out of the toggle where View Transitions exist; a short
-  // colour-only crossfade everywhere else, removed once it has run so the page
-  // is never left with global transitions attached.
+  // colour-only crossfade everywhere else, removed once it has run so the
+  // page is never left with global transitions attached.
   const toggleTheme = useCallback((event) => {
     const root = document.documentElement
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark'
@@ -685,6 +741,10 @@ function App() {
 
   return <>
     <a href="#work" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">Skip to content</a>
+    {/* Full-bleed frosted band behind the header. The nav pill only blurs its
+        own footprint, so content used to scroll past sharply in the margins
+        beside and above it; this fades the whole top strip instead. */}
+    <div className="top-scrim" aria-hidden="true" />
     <Nav theme={theme} onToggleTheme={toggleTheme} />
     <main><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
     <Footer />

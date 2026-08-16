@@ -207,6 +207,49 @@
   .text-link:hover { gap: .7rem; }
 
   /* ------------------------------------------------------------------- nav */
+  /* Sits behind the sticky header, full viewport width, so the strip above
+     and beside the floating nav pill blurs too — not just the pill's own
+     footprint. Fixed (not sticky) because it has no content of its own to
+     size against; mask-fades toward the bottom so it blends into the page
+     instead of ending in a hard line. z-40 keeps it under the pill (z-50) but
+     above ordinary page content. */
+  .top-scrim {
+    /* --header-h is the header's real measured box height (App.jsx observes
+       it directly, since --nav-block is only an approximation used for the
+       hero's min-height calc and doesn't line up with the actual pill). The
+       fade happens *inside* that space and reaches fully transparent by the
+       bottom edge, so no blur ever reaches past the pill into the page. */
+    position: fixed; inset: 0 0 auto 0; z-index: 40;
+    height: var(--header-h, 4.5rem);
+    pointer-events: none;
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    background: linear-gradient(to bottom, rgb(var(--c-paper) / .5) 0%, rgb(var(--c-paper) / .18) 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 62%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 62%, transparent 100%);
+    transition: background-color .3s ease, opacity .3s ease;
+  }
+  /* Once the page has scrolled, lean the same way the pill does — a touch
+     stronger so the transition into the fixed nav reads as continuous. */
+  [data-scrolled='true'] .top-scrim {
+    background: linear-gradient(to bottom, rgb(var(--c-paper) / .68) 0%, rgb(var(--c-paper) / .24) 70%, transparent 100%);
+  }
+
+  /* ---------------------------------------------------------- mobile hide */
+  /* Phones only: the bar slides off-screen on a downward scroll and returns
+     on the way up (App.jsx tracks scroll direction and sets these). Desktop
+     and tablet keep the header fixed in place — see the comment at the
+     scroll listener in Nav for why. The frosted band hides with it, since a
+     blur band with no nav floating in it reads as a rendering glitch. */
+  @media (max-width: 767px) {
+    .site-header {
+      transition: transform .34s cubic-bezier(.4, 0, .2, 1);
+      will-change: transform;
+    }
+    .site-header[data-hidden='true'] { transform: translateY(-135%); }
+    [data-nav-hidden='true'] .top-scrim { opacity: 0; }
+  }
+
   .nav-shell {
     position: relative;
     background: var(--nav-bg);
@@ -293,20 +336,31 @@
 
   .nav-menu { position: relative; margin-left: .15rem; }
   .nav-menu summary {
-    display: grid; place-content: center; gap: .28rem;
+    position: relative;
     height: 2.15rem; width: 2.15rem; cursor: pointer; list-style: none;
     border-radius: 50%; border: 1px solid var(--border-strong);
     background: rgb(var(--c-paper) / .6);
     transition: border-color .2s, background-color .2s;
   }
+  /* All three bars are anchored at the exact same centre point (top/left 50%
+     plus a negative margin equal to half their own size), so the closed state
+     only needs a translateY to fan them out and the open state can drop that
+     translateY entirely — the two remaining bars are already centred and just
+     rotate, so they cross exactly at the middle instead of at wherever a
+     tuned offset happens to land them. */
   .nav-menu summary span {
-    display: block; height: 1.5px; width: .82rem; border-radius: 2px;
-    background: rgb(var(--c-ink));
-    transition: transform .3s cubic-bezier(.22, 1, .36, 1), opacity .2s;
+    position: absolute; top: 50%; left: 50%;
+    height: 1.6px; width: 1.05rem; margin: -.8px 0 0 -.525rem;
+    border-radius: 999px;
+    background: rgb(var(--c-ink) / .8);
+    transition: transform .32s cubic-bezier(.22, 1, .36, 1), opacity .2s ease;
   }
-  .nav-menu[open] summary span:nth-child(1) { transform: translateY(.46rem) rotate(45deg); }
-  .nav-menu[open] summary span:nth-child(2) { opacity: 0; transform: scaleX(.3); }
-  .nav-menu[open] summary span:nth-child(3) { transform: translateY(-.46rem) rotate(-45deg); }
+  .nav-menu summary span:nth-child(1) { transform: translateY(-.34rem); }
+  .nav-menu summary span:nth-child(2) { transform: translateY(0); }
+  .nav-menu summary span:nth-child(3) { transform: translateY(.34rem); }
+  .nav-menu[open] summary span:nth-child(1) { transform: rotate(45deg); }
+  .nav-menu[open] summary span:nth-child(2) { opacity: 0; transform: translateY(0) scale(.4); }
+  .nav-menu[open] summary span:nth-child(3) { transform: rotate(-45deg); }
   .nav-menu-panel {
     position: absolute; right: 0; top: 2.85rem;
     display: grid; min-width: 11rem; gap: .1rem;
