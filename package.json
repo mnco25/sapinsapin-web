@@ -1,0 +1,25 @@
+{
+  "name": "sapinsapin-ai-homepage",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prepare:map": "node scripts/prepare-map.mjs",
+    "prepare:icons": "node scripts/prepare-icons.mjs",
+    "sync": "node scripts/sync-catalog.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "autoprefixer": "latest",
+    "postcss": "latest",
+    "tailwindcss": "^3.4.17"
+  }
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#FBF7F0" />
+    <!-- Resolve the theme before first paint so the page never flashes the
+         wrong palette, and colour the browser chrome to match straight away. -->
+    <script>
+      (function () {
+        var theme = 'light'
+        try { theme = localStorage.getItem('sapinsapin-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') } catch (e) { /* private mode */ }
+        var root = document.documentElement
+        root.dataset.theme = theme
+        root.style.colorScheme = theme
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#12100D' : '#FBF7F0'
+      })()
+    </script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="description" content="SapinSapin AI builds open speech and language foundations for Philippine-language AI." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://sapinsapin.ai/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta property="og:title" content="SapinSapin AI — Open foundations for Philippine AI" />
+    <meta property="og:description" content="Open datasets and models for Philippine languages, built in public." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sapinsapin.ai/" />
+    <meta property="og:site_name" content="SapinSapin AI" />
+    <meta property="og:image" content="https://sapinsapin.ai/og-card.svg" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="SapinSapin AI — Open foundations for Philippine AI" />
+    <meta name="twitter:description" content="Open datasets and models for Philippine languages, built in public." />
+    <meta name="twitter:image" content="https://sapinsapin.ai/og-card.svg" />
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"Organization","name":"SapinSapin AI","alternateName":"Sariling AI PINas","url":"https://sapinsapin.ai","sameAs":["https://huggingface.co/sapinsapin","https://github.com/sapinsapin"],"description":"An open initiative building corpora, benchmarks, and models for Philippine-language AI."}
+    </script>
+    <title>SapinSapin AI — Open foundations for Philippine AI</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

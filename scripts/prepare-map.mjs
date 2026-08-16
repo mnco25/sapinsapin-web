@@ -1,0 +1,135 @@
+// Builds the hero archipelago from a public Philippine boundary file.
+//
+// The projection is equirectangular with a cos(midLat) correction on longitude,
+// so the archipelago keeps its true proportions. Both axes share one scale —
+// scaling them independently stretches the country and is the reason an earlier
+// version of this map looked subtly wrong.
+//
+// Source: Philippines JSON Maps by James Faeldon (MIT). See ATTRIBUTION.md.
+
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+
+const sourceUrl = 'https://raw.githubusercontent.com/faeldon/philippines-json-maps/master/2023/geojson/country/lowres/country.0.001.json'
+const outputPath = resolve('src/data/philippinesMapPaths.js')
+
+const layout = {
+  width: 260,        // viewBox width; height is derived so the aspect stays true
+  pad: 8,            // breathing room inside the viewBox, in viewBox units
+  tolerance: 0.028,  // Douglas-Peucker tolerance in degrees (~3 km)
+  minIsland: 1.15,   // drop islands smaller than this many viewBox units across
+}
+
+// Approximate centre of each language's core speaking region, in real
+// coordinates, so the markers land where the language actually lives.
+const languageAnchors = [
+  { id: 'ilo', lon: 120.60, lat: 17.60 },
+  { id: 'pag', lon: 120.35, lat: 15.97 },
+  { id: 'pam', lon: 120.69, lat: 15.03 },
+  { id: 'fil', lon: 121.00, lat: 14.59 },
+  { id: 'bcl', lon: 123.19, lat: 13.62 },
+  { id: 'war', lon: 124.99, lat: 11.24 },
+  { id: 'hil', lon: 122.57, lat: 10.72 },
+  { id: 'ceb', lon: 123.89, lat: 10.32 },
+  { id: 'tsg', lon: 121.00, lat: 6.05 },
+]
+
+function getRings(geometry) {
+  if (geometry.type === 'Polygon') return geometry.coordinates
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates.flat()
+  return []
+}
+
+// Douglas-Peucker, iterative so a long coastline ring cannot blow the stack.
+function simplifyRing(points, tolerance) {
+  const ring = points.slice(0, -1)
+  if (ring.length < 8) return ring
+
+  const toleranceSquared = tolerance ** 2
+  const keep = new Uint8Array(ring.length)
+  keep[0] = 1
+  keep[ring.length - 1] = 1
+  const stack = [[0, ring.length - 1]]
+
+  while (stack.length) {
+    const [start, end] = stack.pop()
+    const first = ring[start]
+    const last = ring[end]
+    const deltaX = last[0] - first[0]
+    const deltaY = last[1] - first[1]
+    const lengthSquared = deltaX ** 2 + deltaY ** 2 || 1
+    let farthestIndex = -1
+    let farthestDistance = toleranceSquared
+
+    for (let index = start + 1; index < end; index += 1) {
+      const point = ring[index]
+      const scalar = Math.max(0, Math.min(1, ((point[0] - first[0]) * deltaX + (point[1] - first[1]) * deltaY) / lengthSquared))
+      const distance = (point[0] - (first[0] + scalar * deltaX)) ** 2 + (point[1] - (first[1] + scalar * deltaY)) ** 2
+      if (distance > farthestDistance) { farthestDistance = distance; farthestIndex = index }
+    }
+
+    if (farthestIndex > 0) {
+      keep[farthestIndex] = 1
+      stack.push([start, farthestIndex], [farthestIndex, end])
+    }
+  }
+
+  return ring.filter((_, index) => keep[index])
+}
+
+const response = await fetch(sourceUrl)
+if (!response.ok) throw new Error(`Could not download map data (${response.status})`)
+const geojson = await response.json()
+
+const allPoints = geojson.features.flatMap((feature) => getRings(feature.geometry)).flat()
+const bounds = {
+  minLon: Math.min(...allPoints.map(([lon]) => lon)),
+  maxLon: Math.max(...allPoints.map(([lon]) => lon)),
+  minLat: Math.min(...allPoints.map(([, lat]) => lat)),
+  maxLat: Math.max(...allPoints.map(([, lat]) => lat)),
+}
+
+// One shared scale, derived from the longitude span once it has been corrected
+// for how much narrower a degree of longitude is at Philippine latitudes.
+const midLat = (bounds.minLat + bounds.maxLat) / 2
+const lonScale = Math.cos((midLat * Math.PI) / 180)
+const scale = (layout.width - layout.pad * 2) / ((bounds.maxLon - bounds.minLon) * lonScale)
+const height = Math.round((bounds.maxLat - bounds.minLat) * scale + layout.pad * 2)
+
+function project([lon, lat]) {
+  return [
+    Math.round((layout.pad + (lon - bounds.minLon) * lonScale * scale) * 10) / 10,
+    Math.round((layout.pad + (bounds.maxLat - lat) * scale) * 10) / 10,
+  ]
+}
+
+let dropped = 0
+const paths = geojson.features.map((feature) => getRings(feature.geometry)
+  .map((ring) => simplifyRing(ring, layout.tolerance).map(project))
+  .filter((ring) => {
+    if (ring.length < 3) return false
+    const xs = ring.map(([x]) => x)
+    const ys = ring.map(([, y]) => y)
+    const spans = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= layout.minIsland
+    if (!spans) dropped += 1
+    return spans
+  })
+  .map((ring) => `M${ring.map(([x, y]) => `${x},${y}`).join('L')}Z`)
+  .join(' ')).filter(Boolean)
+
+const anchors = languageAnchors.map(({ id, lon, lat }) => {
+  const [x, y] = project([lon, lat])
+  return { id, x, y }
+})
+
+const file = `// Generated by scripts/prepare-map.mjs — do not edit by hand.
+// Source: Philippines JSON Maps by James Faeldon (MIT), 2023 country boundary.
+// https://github.com/faeldon/philippines-json-maps
+export const mapViewBox = ${JSON.stringify({ width: layout.width, height })}
+export const philippinesMapPaths = ${JSON.stringify(paths)}
+export const languageAnchors = ${JSON.stringify(anchors)}
+`
+
+await mkdir(dirname(outputPath), { recursive: true })
+await writeFile(outputPath, file)
+console.log(`viewBox ${layout.width}x${height} · ${paths.length} path groups · ${dropped} sub-pixel islands dropped · ${(file.length / 1024).toFixed(1)} kB`)

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="SapinSapin AI — Every voice belongs in the future">
+  <rect width="1200" height="630" fill="#FBF7F0"/>
+  <path d="M0 492C214 414 337 551 578 457s360-35 622-117v290H0Z" fill="#F2E4C4"/>
+  <path d="M0 539c194-70 322 12 524-80 212-97 383-39 676-124v295H0Z" fill="#7FA65C" opacity=".45"/>
+  <path d="M0 575c184-69 380-14 565-102 220-105 384-30 635-117v274H0Z" fill="#5B3E96" opacity=".82"/>
+  <g><rect x="102" y="72" width="32" height="13" rx="6.5" fill="#EBD9AE"/><rect x="95" y="90" width="46" height="13" rx="6.5" fill="#6E964A"/><rect x="88" y="108" width="60" height="13" rx="6.5" fill="#5B3E96"/></g>
+  <text x="82" y="207" fill="#1A1613" font-family="Georgia, serif" font-size="75" letter-spacing="-4">SapinSapin AI</text>
+  <text x="82" y="298" fill="#1A1613" font-family="Georgia, serif" font-size="68" letter-spacing="-3">Every voice belongs</text>
+  <text x="82" y="377" fill="#5B3E96" font-family="Georgia, serif" font-size="68" font-style="italic" letter-spacing="-3">in the future.</text>
+  <text x="85" y="438" fill="#1A1613" font-family="Arial, sans-serif" font-size="22" letter-spacing="1">OPEN FOUNDATIONS FOR PHILIPPINE AI</text>
+</svg>
