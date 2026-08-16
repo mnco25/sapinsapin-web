@@ -5,6 +5,7 @@ import Stats from './components/Stats.jsx'
 import Datasets from './components/Datasets.jsx'
 import Models from './components/Models.jsx'
 import Contribute from './components/Contribute.jsx'
+import Cta from './components/Cta.jsx'
 import Footer from './components/Footer.jsx'
 import { LayerDivider } from './components/Primitives.jsx'
 
@@ -22,7 +23,6 @@ export default function App() {
 
       <main id="main">
         <Hero />
-        <LayerDivider />
         <Problem />
         <Stats />
         <Datasets />
@@ -30,6 +30,7 @@ export default function App() {
         <Models />
         <LayerDivider />
         <Contribute />
+        <Cta />
       </main>
 
       <Footer />

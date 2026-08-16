@@ -62,7 +62,9 @@ counting it would double-count.
 ## Notes on the build
 
 - **Fonts.** One web family (Fraunces, for display) loaded from Google Fonts; body text
-  uses the system sans stack. Total JS is ~53 kB gzipped.
+  uses the system sans stack. Total JS is ~57 kB gzipped — all motion and interactivity
+  (waveform, count-ups, marquee, filters, scroll-spy nav) is hand-rolled CSS/JS with no
+  animation libraries.
 - **Licensing copy.** The footer states explicitly that the corpora carry *different*
   licences rather than implying one blanket licence, and each dataset card shows its own.
 - **Accessibility.** Semantic landmarks, a skip link, labelled sections, visible focus
@@ -70,7 +72,11 @@ counting it would double-count.
   pandan accents do not clear WCAG AA at body-text sizes, so `pandan-deep` and
   `ube-bright` variants (in `tailwind.config.js`) are used for text; the base tones are
   reserved for large type and decoration.
-- **Motion.** Scroll-triggered fade/slide only, disabled under `prefers-reduced-motion`.
+- **Motion.** Staggered hero entrance, an animated waveform in the brand palette, a
+  language marquee (pauses on hover), count-up statistics, scroll-triggered section
+  reveals, and card hover lifts. Every one of them is disabled or neutralised under
+  `prefers-reduced-motion`, and the marquee content is duplicated `aria-hidden` with a
+  screen-reader-only language list alongside.
 - **Dark mode.** Follows the system setting, with a manual toggle in the header persisted
   to `localStorage`. An inline script in `index.html` applies the theme before first
   paint to avoid a flash.

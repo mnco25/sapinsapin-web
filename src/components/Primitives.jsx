@@ -9,6 +9,23 @@ export function ExternalLink({ href, children, className = '', ...rest }) {
   )
 }
 
+export function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return reduced
+}
+
 /**
  * Fades and lifts its children into place the first time they scroll into view.
  * Reduced-motion users get the finished state immediately — the CSS neutralises
@@ -36,7 +53,7 @@ export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, .
           }
         })
       },
-      { rootMargin: '0px 0px -10% 0px', threshold: 0.05 },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
     )
 
     observer.observe(node)
@@ -56,13 +73,73 @@ export function Reveal({ as: Tag = 'div', delay = 0, className = '', children, .
 }
 
 /**
+ * Counts from 0 to a target once the element scrolls into view.
+ * Accepts strings like "513+", "647,652" — the numeric core animates,
+ * separators and suffixes are preserved. Reduced motion skips straight
+ * to the final value.
+ */
+export function CountUp({ value, duration = 1600, className = '' }) {
+  const ref = useRef(null)
+  const [display, setDisplay] = useState(value)
+  const reduced = usePrefersReducedMotion()
+
+  useEffect(() => {
+    const match = String(value).match(/^([\d,]+)(.*)$/)
+    if (!match || reduced || typeof IntersectionObserver === 'undefined') {
+      setDisplay(value)
+      return
+    }
+
+    const target = parseInt(match[1].replace(/,/g, ''), 10)
+    const suffix = match[2] || ''
+    const hasSeparators = match[1].includes(',')
+    const node = ref.current
+    if (!node || Number.isNaN(target)) return
+
+    setDisplay(`0${suffix}`)
+
+    let raf
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return
+        observer.disconnect()
+
+        const start = performance.now()
+        const tick = (now) => {
+          const t = Math.min((now - start) / duration, 1)
+          const eased = 1 - Math.pow(1 - t, 4)
+          const current = Math.round(target * eased)
+          const text = hasSeparators ? current.toLocaleString('en-US') : String(current)
+          setDisplay(`${text}${suffix}`)
+          if (t < 1) raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+      },
+      { threshold: 0.4 },
+    )
+
+    observer.observe(node)
+    return () => {
+      observer.disconnect()
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [value, duration, reduced])
+
+  return (
+    <span ref={ref} className={className}>
+      {display}
+    </span>
+  )
+}
+
+/**
  * The sapin-sapin motif: stacked strata of colour, thinning as they rise.
  * Decorative only — hidden from assistive tech.
  */
 export function LayerDivider({ className = '' }) {
   const layers = [
-    'bg-ube/25 dark:bg-ube-bright/30',
-    'bg-pandan/30 dark:bg-pandan-bright/25',
+    'bg-ube/30 dark:bg-ube-bright/35',
+    'bg-pandan/35 dark:bg-pandan-bright/30',
     'bg-coconut dark:bg-coconut/25',
   ]
 
@@ -70,7 +147,11 @@ export function LayerDivider({ className = '' }) {
     <div aria-hidden="true" className={`mx-auto w-full max-w-page px-6 ${className}`}>
       <div className="flex flex-col gap-[3px]">
         {layers.map((layer, i) => (
-          <div key={i} className={`h-[3px] rounded-full ${layer}`} style={{ width: `${100 - i * 18}%` }} />
+          <div
+            key={i}
+            className={`h-[3px] rounded-full ${layer}`}
+            style={{ width: `${100 - i * 18}%` }}
+          />
         ))}
       </div>
     </div>
@@ -82,22 +163,18 @@ export function Section({ id, title, eyebrow, intro, children, className = '' })
   const headingId = `${id}-heading`
 
   return (
-    <section id={id} aria-labelledby={headingId} className={`py-20 sm:py-28 ${className}`}>
+    <section id={id} aria-labelledby={headingId} className={`scroll-mt-24 py-24 sm:py-32 ${className}`}>
       <div className="mx-auto w-full max-w-page px-6">
         <Reveal>
-          {eyebrow && (
-            <p className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-pandan-deep dark:text-pandan-bright">
-              {eyebrow}
-            </p>
-          )}
+          {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
           <h2
             id={headingId}
-            className="font-display text-3xl leading-tight sm:text-4xl md:text-[2.75rem]"
+            className="max-w-3xl font-display text-[clamp(2rem,4.5vw,3.25rem)] font-semibold leading-[1.08] tracking-tight"
           >
             {title}
           </h2>
           {intro && (
-            <p className="mt-5 max-w-prose text-lg leading-relaxed text-ink/70 dark:text-coconut/70">
+            <p className="mt-6 max-w-prose text-lg leading-relaxed text-ink/70 dark:text-coconut/70">
               {intro}
             </p>
           )}
@@ -108,25 +185,15 @@ export function Section({ id, title, eyebrow, intro, children, className = '' })
   )
 }
 
-/** Shared button shape for the two hero CTAs and anything else that needs it. */
 export function Button({ href, variant = 'primary', children }) {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-medium transition-colors'
-  const variants = {
-    primary:
-      'bg-ube text-cream hover:bg-ube/90 dark:bg-ube-bright dark:text-night-bg dark:hover:bg-ube-bright/90',
-    secondary:
-      'border border-ink/20 text-ink hover:border-ink/40 hover:bg-ink/5 dark:border-coconut/25 dark:text-coconut dark:hover:border-coconut/50 dark:hover:bg-coconut/10',
-  }
-
   return (
-    <ExternalLink href={href} className={`${base} ${variants[variant]}`}>
+    <ExternalLink href={href} className={`btn ${variant === 'primary' ? 'btn-primary' : 'btn-secondary'}`}>
       {children}
     </ExternalLink>
   )
 }
 
-/** Small arrow that nudges on hover; decorative, the link text carries meaning. */
+/** Small arrow; decorative, the link text carries meaning. */
 export function ArrowIcon({ className = '' }) {
   return (
     <svg
@@ -134,12 +201,53 @@ export function ArrowIcon({ className = '' }) {
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`h-4 w-4 ${className}`}
+      className={`arrow-nudge h-4 w-4 ${className}`}
     >
       <path d="M3 8h10M9 4l4 4-4 4" />
     </svg>
+  )
+}
+
+/** Copies text to the clipboard with visible confirmation. */
+export function CopyButton({ text, label = 'Copy code' }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch (e) {
+      /* Clipboard unavailable (http, permissions) — button simply does nothing. */
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={copied ? 'Copied' : label}
+      className="inline-flex items-center gap-1.5 rounded-md border border-coconut/20 px-2.5 py-1.5 font-mono text-[0.7rem] uppercase tracking-wider text-coconut/70 transition-colors hover:border-coconut/45 hover:text-coconut"
+    >
+      {copied ? (
+        <>
+          <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-pandan-bright">
+            <path d="M3 8.5l3.5 3.5L13 4.5" />
+          </svg>
+          Copied
+        </>
+      ) : (
+        <>
+          <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
+            <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+            <path d="M10.5 5.5v-2a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3.5v5A1.5 1.5 0 0 0 4 10h1.5" />
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
   )
 }

@@ -18,11 +18,16 @@
   body {
     @apply bg-cream text-ink antialiased dark:bg-night-bg dark:text-coconut;
     font-feature-settings: 'kern', 'liga';
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-ube/20 dark:bg-ube-bright/30;
   }
 
   /* Visible, high-contrast focus ring on every interactive element. */
   :focus-visible {
-    @apply outline-none ring-2 ring-ube ring-offset-2 ring-offset-cream dark:ring-offset-night-bg;
+    @apply outline-none ring-2 ring-ube ring-offset-2 ring-offset-cream dark:ring-ube-bright dark:ring-offset-night-bg;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -41,13 +46,13 @@
 }
 
 @layer components {
-  /* Scroll-reveal: sections start offset and settle once observed. */
+  /* ---------- Scroll reveal ---------- */
   .reveal {
     opacity: 0;
-    transform: translateY(1rem);
+    transform: translateY(1.25rem);
     transition:
-      opacity 700ms ease-out,
-      transform 700ms ease-out;
+      opacity 800ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 800ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .reveal.is-visible {
@@ -55,10 +60,188 @@
     transform: none;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .reveal {
+  /* ---------- Hero entrance (plays on load, no observer needed) ---------- */
+  .hero-enter {
+    opacity: 0;
+    transform: translateY(1.5rem);
+    animation: hero-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: var(--enter-delay, 0ms);
+  }
+
+  @keyframes hero-rise {
+    to {
       opacity: 1;
       transform: none;
     }
+  }
+
+  /* ---------- Waveform: the speech + sapin-sapin motif ---------- */
+  .wave-bar {
+    transform-origin: bottom;
+    animation: wave-pulse var(--wave-dur, 2.4s) ease-in-out infinite alternate;
+    animation-delay: var(--wave-delay, 0s);
+    will-change: transform;
+  }
+
+  @keyframes wave-pulse {
+    from {
+      transform: scaleY(0.35);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* ---------- Language marquee ---------- */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 42s linear infinite;
+  }
+
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+    }
+  }
+
+  /* ---------- Ambient glow fields (hero + section accents) ---------- */
+  .glow-ube {
+    background: radial-gradient(closest-side, rgba(91, 62, 150, 0.16), transparent 70%);
+  }
+
+  .glow-pandan {
+    background: radial-gradient(closest-side, rgba(127, 166, 92, 0.14), transparent 70%);
+  }
+
+  .dark .glow-ube {
+    background: radial-gradient(closest-side, rgba(169, 140, 224, 0.13), transparent 70%);
+  }
+
+  .dark .glow-pandan {
+    background: radial-gradient(closest-side, rgba(169, 206, 132, 0.09), transparent 70%);
+  }
+
+  .glow-drift {
+    animation: glow-drift 14s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  @keyframes glow-drift {
+    from {
+      transform: translate3d(-3%, -2%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(3%, 3%, 0) scale(1.08);
+    }
+  }
+
+  /* ---------- Dotted paper texture behind the hero ---------- */
+  .dot-grid {
+    background-image: radial-gradient(rgba(26, 22, 19, 0.10) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 35%, black 30%, transparent 75%);
+  }
+
+  .dark .dot-grid {
+    background-image: radial-gradient(rgba(242, 228, 196, 0.09) 1px, transparent 1px);
+  }
+
+  /* ---------- Card treatment ---------- */
+  .card {
+    @apply rounded-2xl border border-ink/10 bg-white/60 dark:border-coconut/10 dark:bg-white/[0.03];
+    transition:
+      transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 400ms ease,
+      box-shadow 400ms ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    @apply border-ube/35 dark:border-ube-bright/35;
+    box-shadow:
+      0 12px 32px -16px rgba(91, 62, 150, 0.25),
+      0 2px 8px -4px rgba(26, 22, 19, 0.06);
+  }
+
+  .dark .card-hover:hover {
+    box-shadow: 0 12px 36px -14px rgba(0, 0, 0, 0.55);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-hover:hover {
+      transform: none;
+    }
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-7 py-3.5 text-base font-semibold;
+    transition:
+      transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 300ms ease,
+      background-color 300ms ease,
+      border-color 300ms ease;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-primary {
+    @apply bg-ube text-cream dark:bg-ube-bright dark:text-night-bg;
+    box-shadow: 0 8px 24px -10px rgba(91, 62, 150, 0.55);
+  }
+
+  .btn-primary:hover {
+    @apply bg-ube-deep dark:bg-ube-bright/90;
+    box-shadow: 0 12px 32px -10px rgba(91, 62, 150, 0.65);
+  }
+
+  .btn-secondary {
+    @apply border border-ink/20 bg-white/50 text-ink dark:border-coconut/25 dark:bg-white/[0.04] dark:text-coconut;
+  }
+
+  .btn-secondary:hover {
+    @apply border-ink/45 bg-white/80 dark:border-coconut/55 dark:bg-white/[0.08];
+  }
+
+  /* Arrow inside buttons/links nudges right on hover. */
+  .arrow-nudge {
+    transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .group:hover .arrow-nudge,
+  .btn:hover .arrow-nudge {
+    transform: translateX(3px);
+  }
+
+  /* ---------- Eyebrow label ---------- */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-pandan-deep dark:text-pandan-bright;
+  }
+
+  .eyebrow::before {
+    content: '';
+    @apply block h-px w-8 bg-pandan-deep/60 dark:bg-pandan-bright/60;
+  }
+
+  /* ---------- Chip ---------- */
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[0.7rem] uppercase tracking-wider;
   }
 }

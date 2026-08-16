@@ -1,4 +1,5 @@
 import { ExternalLink } from './Primitives.jsx'
+import { Logomark } from './Header.jsx'
 import { HF_ORG, GITHUB_ORG } from '../content.js'
 
 const linkClass =
@@ -10,8 +11,11 @@ export default function Footer() {
       <div className="mx-auto w-full max-w-page px-6">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <p className="font-display text-lg font-semibold">SapinSapin AI</p>
-            <p className="mt-3 max-w-sm leading-relaxed text-ink/70 dark:text-coconut/70">
+            <p className="flex items-center gap-2.5 font-display text-xl font-semibold tracking-tight">
+              <Logomark className="h-7 w-7" />
+              SapinSapin AI
+            </p>
+            <p className="mt-4 max-w-sm leading-relaxed text-ink/70 dark:text-coconut/70">
               Open speech and text datasets for Philippine languages. Named for the layered rice
               cake — many languages, one stack.
             </p>
@@ -88,9 +92,7 @@ export default function Footer() {
             , which stewards the corpus. BantayWika derives from the Bantay-Wika corpus of the UP
             Sentro ng Wikang Filipino and the UP DSP Laboratory.
           </p>
-          <p className="pt-2 text-ink/50 dark:text-coconut/50">
-            sapinsapin.ai — built in the open.
-          </p>
+          <p className="pt-2 text-ink/50 dark:text-coconut/50">sapinsapin.ai — built in the open.</p>
         </div>
       </div>
     </footer>
