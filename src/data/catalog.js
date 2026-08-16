@@ -110,6 +110,7 @@ export const datasets = datasetCopy.map((item) => {
   const live = liveDataset.get(item.id)
   return {
     ...item,
+    kind: item.kicker.split(' · ')[0].trim(),
     downloads: live?.downloads ?? 0,
     updated: live ? formatDay(live.updated) : item.updated,
     gated: live?.gated ?? item.gated ?? false,

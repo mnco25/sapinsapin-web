@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import NumberFlow from '@number-flow/react'
 import { datasets, models, catalogSnapshot, totals } from './data/catalog'
 import { ArrowUpRight, Code, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
 import PhilippinesMap from './components/PhilippinesMap'
@@ -147,6 +148,27 @@ function Reveal({ as: Tag = 'div', className = '', children, ...rest }) {
   return <Tag ref={ref} className={`reveal ${className}`} {...rest}>{children}</Tag>
 }
 
+/* Rolls a figure up from zero the first time it scrolls into view. Respects
+   reduced-motion by jumping straight to the value. */
+function CountUp({ value, format }) {
+  const ref = useRef(null)
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return undefined
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (still || !('IntersectionObserver' in window)) { setShown(value); return undefined }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      setShown(value)
+      observer.disconnect()
+    }, { threshold: 0.4 })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [value])
+  return <span ref={ref}><NumberFlow value={shown} format={format} /></span>
+}
+
 /* Marks whichever section is crossing the middle of the viewport. */
 function useActiveSection() {
   const [activeId, setActiveId] = useState(null)
@@ -286,7 +308,7 @@ function Hero() {
           <ExternalLink href={space} className="btn btn-ghost" label="Open the halohalo live demo on Hugging Face">Try the live demo <ArrowUpRight className="h-4 w-4" /></ExternalLink>
         </div>
         <div className="hero-evidence hero-rise hero-rise-4 mt-10">
-          <span><b>{String(totals.datasets).padStart(2, '0')}</b> data collections</span><span><b>{totals.models}</b> public models</span><span><b>10</b> language layers</span>
+          <span><b><CountUp value={totals.datasets} format={{ minimumIntegerDigits: 2 }} /></b> data collections</span><span><b><CountUp value={totals.models} /></b> public models</span><span><b><CountUp value={10} /></b> language layers</span>
         </div>
       </div>
       <div className="relative z-10 mx-auto w-full max-w-[580px] lg:ml-auto"><PhilippinesMap /></div>
@@ -365,22 +387,81 @@ function Problem() {
 }
 
 function Impact() {
-  const stats = [['513.3', 'verified speech hours', 'PLD + Filipino Speech Corpus'], ['639,514', 'verified utterances', 'PLD + Filipino Speech Corpus'], ['10', 'Philippine languages', 'in the PLD collection'], [String(totals.datasets), 'datasets in the catalog', `Hub sync · ${catalogSnapshot}`]]
-  return <section className="section-shell pt-28 sm:pt-36"><div className="layer-band"><div className="mb-11 flex flex-col justify-between gap-5 md:flex-row md:items-end"><SectionHeading eyebrow="Impact, made inspectable" title={<>Built in public.<br />Measured honestly.</>} /><p className="max-w-sm text-sm leading-6 text-ink/65">Counts are taken from the public Hub cards and dataset documentation. “Verified” deliberately excludes access-controlled collections whose totals are not public.</p></div><Reveal as="dl" className="grid divide-y divide-ink/10 border-y border-ink/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">{stats.map(([value, label, source]) => <div className="px-0 py-7 sm:px-6 lg:px-7" key={label}><dt className="font-display text-4xl tracking-[-.06em] text-ube sm:text-5xl">{value}</dt><dd className="mt-2 text-sm font-semibold tracking-[-.02em] text-ink">{label}</dd><dd className="mt-1 text-xs leading-5 text-ink/60">{source}</dd></div>)}</Reveal></div></section>
+  const stats = [
+    { value: 513.3, format: { minimumFractionDigits: 1, maximumFractionDigits: 1 }, label: 'verified speech hours', source: 'PLD + Filipino Speech Corpus' },
+    { value: 639514, label: 'verified utterances', source: 'PLD + Filipino Speech Corpus' },
+    { value: 10, label: 'Philippine languages', source: 'in the PLD collection' },
+    { value: totals.datasets, label: 'datasets in the catalog', source: `Hub sync · ${catalogSnapshot}` },
+  ]
+  return <section className="section-shell pt-28 sm:pt-36"><div className="layer-band"><div className="mb-11 flex flex-col justify-between gap-5 md:flex-row md:items-end"><SectionHeading eyebrow="Impact, made inspectable" title={<>Built in public.<br />Measured honestly.</>} /><p className="max-w-sm text-sm leading-6 text-ink/65">Counts are taken from the public Hub cards and dataset documentation. “Verified” deliberately excludes access-controlled collections whose totals are not public.</p></div><Reveal as="dl" className="grid divide-y divide-ink/10 border-y border-ink/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">{stats.map(({ value, format, label, source }) => <div className="px-0 py-7 sm:px-6 lg:px-7" key={label}><dt className="font-display text-4xl tracking-[-.06em] text-ube sm:text-5xl"><CountUp value={value} format={format} /></dt><dd className="mt-2 text-sm font-semibold tracking-[-.02em] text-ink">{label}</dd><dd className="mt-1 text-xs leading-5 text-ink/60">{source}</dd></div>)}</Reveal></div></section>
 }
 
 function DatasetCard({ item, index }) {
+  const languages = item.languages.split(' · ')
+  const shown = languages.slice(0, 3)
+  const rest = languages.length - shown.length
+  const unstated = (value) => (value === '{{VERIFY}}' ? <span className="meta-unstated">Not stated on the Hub</span> : value)
+
   return <article className={`dataset-card ${item.featured ? 'dataset-featured' : ''}`}>
-    <div className="flex items-start justify-between gap-4"><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-ube">{item.kicker}</p><span className="text-xs text-ink/60">0{index + 1}</span></div>
-    <h3 className="mt-7 font-display text-[2rem] leading-none tracking-[-.055em] text-ink">{item.title}</h3>
-    <p className="mt-4 min-h-[76px] text-[.92rem] leading-6 text-ink/68">{item.description}</p>
-    <dl className="mt-8 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-ink/10 pt-5 text-[.75rem]"><div><dt className="meta-label">Languages</dt><dd className="mt-1.5 leading-5 text-ink/72">{item.languages}</dd></div><div><dt className="meta-label">Size</dt><dd className="mt-1.5 leading-5 text-ink/72">{item.size}</dd></div><div><dt className="meta-label">License</dt><dd className="mt-1.5 font-medium leading-5 text-ink/72">{item.license}</dd></div><div><dt className="meta-label">Updated</dt><dd className="mt-1.5 leading-5 text-ink/72">{item.updated}</dd></div></dl>
-    <div className="mt-7 flex items-center justify-between gap-3"><div className="flex flex-wrap gap-1.5">{item.tags.slice(0, 3).map(tag => <span key={tag} className="tag">{tag}</span>)}</div><ExternalLink href={item.href} className="round-link" label={`Open ${item.title} on Hugging Face`}><ArrowUpRight className="h-4 w-4" /></ExternalLink></div>
+    <div className="dataset-head">
+      <p className="dataset-kicker">{item.kind}</p>
+      <span className="dataset-index">{String(index + 1).padStart(2, '0')}</span>
+    </div>
+    <h3 className="dataset-title">{item.title}</h3>
+    <p className="dataset-desc">{item.description}</p>
+
+    <dl className="dataset-meta">
+      <div className="dataset-meta-wide">
+        <dt className="meta-label">Languages</dt>
+        <dd>{shown.join(' · ')}{rest > 0 && <span className="meta-more"> +{rest} more</span>}</dd>
+      </div>
+      <div><dt className="meta-label">Size</dt><dd>{unstated(item.size)}</dd></div>
+      <div><dt className="meta-label">Downloads 30d</dt><dd className="dataset-figure">{item.downloads.toLocaleString()}</dd></div>
+      <div><dt className="meta-label">License</dt><dd>{unstated(item.license)}</dd></div>
+      <div><dt className="meta-label">Updated</dt><dd>{item.updated}</dd></div>
+    </dl>
+
+    <div className="dataset-foot">
+      <div className="dataset-tags">
+        {item.gated && <span className="tag tag-gated">Access controlled</span>}
+        {item.tags.slice(0, item.gated ? 2 : 3).map(tag => <span key={tag} className="tag">{tag}</span>)}
+      </div>
+      <ExternalLink href={item.href} className="round-link" label={`Open ${item.title} on Hugging Face`}><ArrowUpRight className="h-4 w-4" /></ExternalLink>
+    </div>
   </article>
 }
 
 function Datasets() {
-  return <section id="work" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><SectionHeading eyebrow="The collection" title="Foundations you can build on.">Speech, text, and language data made discoverable in one place. Each card links directly to its live dataset card, documentation, and terms.</SectionHeading><ExternalLink href={`${hub}?tab=datasets`} className="text-link" label="View all SapinSapin AI datasets on Hugging Face">Visit the Hub <ArrowUpRight className="h-4 w-4" /></ExternalLink></div><Reveal className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{datasets.map((item, index) => <DatasetCard key={item.id} item={item} index={index} />)}</Reveal><p className="mt-5 text-xs leading-5 text-ink/60">Catalog snapshot: {catalogSnapshot}. Entries marked <code>{'{{VERIFY}}'}</code> are intentionally unresolved because their public Hub metadata does not supply that fact. See the README before launch.</p></section>
+  // The catalog splits cleanly into speech and text corpora, so the same
+  // filter pattern used for models keeps nine cards from reading as one wall.
+  const [filter, setFilter] = useState('All data')
+  const tabs = useMemo(() => {
+    const counts = new Map()
+    datasets.forEach((item) => counts.set(item.kind, (counts.get(item.kind) ?? 0) + 1))
+    return [['All data', datasets.length], ...[...counts].sort((a, b) => b[1] - a[1])]
+  }, [])
+  const visible = filter === 'All data' ? datasets : datasets.filter((item) => item.kind === filter)
+
+  return <section id="work" className="section-shell scroll-mt-24 pt-28 sm:pt-40">
+    <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
+      <SectionHeading eyebrow="The collection" title="Foundations you can build on.">Speech, text, and language data made discoverable in one place. Each card links directly to its live dataset card, documentation, and terms.</SectionHeading>
+      <ExternalLink href={`${hub}?tab=datasets`} className="text-link" label="View all SapinSapin AI datasets on Hugging Face">Visit the Hub <ArrowUpRight className="h-4 w-4" /></ExternalLink>
+    </div>
+
+    <div className="dataset-filters" role="group" aria-label="Filter datasets by kind">
+      {tabs.map(([label, count]) => (
+        <button key={label} type="button" onClick={() => setFilter(label)} aria-pressed={filter === label} className={filter === label ? 'is-active' : ''}>
+          {label} <span>{count}</span>
+        </button>
+      ))}
+    </div>
+
+    <Reveal className="dataset-grid">
+      {visible.map((item, index) => <DatasetCard key={item.id} item={item} index={index} />)}
+    </Reveal>
+
+    <p className="mt-6 text-xs leading-5 text-ink/60">Sizes and licences are shown exactly as the public Hub card states them; where a card does not state one, this page says so rather than guessing. Counts and dates synced {catalogSnapshot}.</p>
+  </section>
 }
 
 function ModelPreview({ model, style }) {
@@ -456,7 +537,7 @@ function Models() {
       <div className="grid gap-8 px-6 py-8 sm:px-10 sm:py-11 lg:grid-cols-[1fr_.72fr]">
         <SectionHeading eyebrow="Models" title={<>A growing model<br />layer, <em className="text-ube">in the open.</em></>}>The public model catalog spans language generation, speech recognition, text-to-speech, and audio-to-audio work. Every entry below links to its live model card.</SectionHeading>
         <div className="self-end border-l-0 border-ink/10 pt-2 lg:border-l lg:pl-8">
-          <p className="font-display text-6xl tracking-[-.08em] text-pandan">{totals.models}</p>
+          <p className="font-display text-6xl tracking-[-.08em] text-pandan"><CountUp value={totals.models} /></p>
           <p className="mt-2 text-sm font-medium text-ink/80">public models catalogued</p>
           <p className="mt-4 text-xs leading-5 text-ink/60">Ordered by downloads over the last 30 days. Counts, tasks, and dates are synced from the public Hub API on {catalogSnapshot}; model cards remain the canonical source.</p>
         </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import NumberFlow from '@number-flow/react'
 import { languageAnchors, mapViewBox, philippinesMapPaths } from '../data/philippinesMapPaths'
 import { models } from '../data/catalog'
 
@@ -42,6 +43,24 @@ export default function PhilippinesMap() {
   // The extrusion is one landmass definition reused by <use>, so the 22 kB of
   // path data is parsed once instead of once per depth step.
   const depth = Array.from({ length: 9 }, (_, step) => step)
+
+  // Bearing from the middle of the archipelago to the active language, measured
+  // clockwise from north. The dial keeps a fixed north mark and rotates only a
+  // separate pointer, so it still reads as a north arrow rather than pretending
+  // a magnetic needle is aiming at a dataset.
+  const bearing = useMemo(() => {
+    const deltaX = active.x - mapViewBox.width / 2
+    const deltaY = active.y - mapViewBox.height / 2
+    return (Math.atan2(deltaX, -deltaY) * 180) / Math.PI
+  }, [active])
+
+  const compassPoints = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  const heading = compassPoints[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]
+
+  const stepLayer = (offset) => {
+    const index = layers.findIndex((layer) => layer.id === activeId)
+    setActiveId(layers[(index + offset + layers.length) % layers.length].id)
+  }
 
   return (
     <figure className="language-map">
@@ -125,7 +144,37 @@ export default function PhilippinesMap() {
             </g>
           </svg>
 
-          <div className="map-compass" aria-hidden="true"><i /><span>N</span></div>
+          <button
+            type="button"
+            className="map-compass"
+            onClick={() => stepLayer(1)}
+            onContextMenu={(event) => { event.preventDefault(); stepLayer(-1) }}
+            onMouseDown={(event) => event.preventDefault()}
+            aria-label={`${active.label} lies to the ${heading} of centre. Activate for the next language layer.`}
+            title={`${active.label} · ${heading} of centre`}
+          >
+            <svg viewBox="0 0 44 44" aria-hidden="true">
+              <circle className="compass-ring" cx="22" cy="22" r="20.5" />
+              <circle className="compass-ring-inner" cx="22" cy="22" r="14" />
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <line
+                  key={deg}
+                  className={deg % 90 === 0 ? 'compass-tick compass-tick-major' : 'compass-tick'}
+                  x1="22" y1={deg % 90 === 0 ? 3.6 : 5} x2="22" y2="7.4"
+                  transform={`rotate(${deg} 22 22)`}
+                />
+              ))}
+              {/* Fixed north reference — this never moves. */}
+              <path className="compass-north" d="M22 8.6 24.3 13.2 19.7 13.2Z" />
+              {/* Rotating bearing pointer for the active layer. */}
+              <g className="compass-pointer" style={{ transform: `rotate(${bearing}deg)` }}>
+                <path className="compass-pointer-tail" d="M22 22 20.6 28.6 23.4 28.6Z" />
+                <path className="compass-pointer-head" d="M22 14 25.1 22.6 18.9 22.6Z" />
+              </g>
+              <circle className="compass-hub" cx="22" cy="22" r="1.9" />
+            </svg>
+            <span className="compass-readout">{heading}</span>
+          </button>
         </div>
 
         <div className="map-panel">
@@ -134,8 +183,8 @@ export default function PhilippinesMap() {
             <strong>{active.label}</strong>
             <small>{active.region}</small>
             <dl className="map-readout-stats">
-              <div><dt>Models</dt><dd>{active.models}</dd></div>
-              <div><dt>Downloads 30d</dt><dd>{active.downloads.toLocaleString()}</dd></div>
+              <div><dt>Models</dt><dd><NumberFlow value={active.models} /></dd></div>
+              <div><dt>Downloads 30d</dt><dd><NumberFlow value={active.downloads} /></dd></div>
             </dl>
             <p className="map-readout-tasks">{active.tasks.join(' · ')}</p>
           </div>
@@ -156,7 +205,7 @@ export default function PhilippinesMap() {
               >
                 <span>{layer.code}</span>
                 <i>{layer.label}</i>
-                <b>{layer.downloads}</b>
+                <b><NumberFlow value={layer.downloads} /></b>
               </button>
             ))}
           </div>

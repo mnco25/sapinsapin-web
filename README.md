@@ -1,81 +1,182 @@
-# SapinSapin AI homepage
+# sapinsapin.ai
 
-A static React + Vite + Tailwind homepage for SapinSapin AI, designed as a calm, research-first public face for Philippine-language AI.
+The public landing page for [SapinSapin AI](https://huggingface.co/sapinsapin) — an open
+initiative building corpora, benchmarks, and models for Philippine-language AI.
 
-## Run locally
+The page is a static React + Vite + Tailwind build with no backend, no database, and no
+runtime data fetching. Every figure it displays is synced from the Hugging Face Hub at
+build time.
+
+**Live:** <https://sapinsapin-web.vercel.app>
+
+---
+
+## Quick start
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build the static production bundle with:
+The dev server runs on the port Vite reports (default `5173`).
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server. |
+| `npm run build` | Produce the static bundle in `dist/`. |
+| `npm run preview` | Serve the built bundle locally. |
+| `npm run sync` | Refresh dataset and model figures from the Hub API. |
+| `npm run prepare:map` | Regenerate the hero map geometry from public boundary data. |
+| `npm run prepare:icons` | Rasterise the brand mark to PNG favicons. |
+
+> [!IMPORTANT]
+> Run `npm run sync` before deploying. It rewrites `src/data/hubSnapshot.js`, which is
+> where every count, download figure, task label, and date on the page comes from.
 
 ```bash
-npm run build
-npm run preview
+npm run sync && npm run build
 ```
 
-## Deploy to Vercel
+---
 
-1. Import this folder as a new Vercel project.
-2. Vercel detects Vite automatically. Use `npm run build` as the build command and `dist` as the output directory.
-3. Set `sapinsapin.ai` as the production domain.
-4. Before publishing, update the catalog snapshot in `src/data/catalog.js` and the visible date in the page footer.
+## How the data works
 
-No server, authentication, database, or environment variables are required.
+The page shows live org data, but it reads it at **build time** rather than in the browser.
 
-## Architecture
+That is a deliberate constraint, not a shortcut. The Hub API responds with:
+
+```http
+access-control-allow-origin: https://huggingface.co
+```
+
+so a browser on `sapinsapin.ai` cannot call it directly — a client-side fetch is blocked by
+CORS. Syncing on build keeps the figures honest on every deploy without needing a proxy or
+serverless function. If real-time figures ever become a requirement, that needs a small
+server-side proxy and is a separate decision.
+
+### The pipeline
 
 ```
+scripts/sync-catalog.mjs        →  src/data/hubSnapshot.js   (generated, do not edit)
+                                        ↓
+                                   src/data/catalog.js       (editorial copy + merge)
+                                        ↓
+                                   the page
+```
+
+`catalog.js` holds the hand-written descriptions and kickers. Every *number* — counts,
+downloads, tasks, dates, gated flags — is merged in from the generated snapshot, so the
+prose and the figures can never drift apart.
+
+> [!NOTE]
+> `downloads` is the Hub's **30-day** figure, which is what the org's own
+> [dashboard Space](https://huggingface.co/spaces/sapinsapin/halohalo-dashboard) labels
+> "Downloads (30d)". The page says "30d" wherever the number appears — keep that wording.
+
+### Unstated metadata
+
+Where a public Hub card does not state a size or licence, the page renders
+*"Not stated on the Hub"* rather than guessing. Do not fill these in from a repo name, tag,
+or sibling model — resolve them on the Hub card itself, or leave them.
+
+---
+
+## Project layout
+
+```
+scripts/
+  sync-catalog.mjs        Hub API → hubSnapshot.js (run before deploy)
+  prepare-map.mjs         GeoJSON → simplified SVG paths + projected anchors
+  prepare-icons.mjs       Brand mark → apple-touch-icon.png, favicon-32.png
 src/
   components/
-    HeroVisual.jsx     Abstract, inline-SVG language network
-    Icons.jsx          Tiny inline SVG icon set
+    Icons.jsx             Inline SVG icon set and the brand mark
+    PhilippinesMap.jsx    Hero map, bearing dial, language readout
   data/
-    catalog.js         Deliberately static, verified Hub snapshot
-  App.jsx              Semantic page sections and content
-  index.css            Tailwind layers plus the design system
+    catalog.js            Editorial copy, merged with the live snapshot
+    hubSnapshot.js        Generated — do not edit by hand
+    modelNotes.js         Plain-language descriptions for model hover cards
+    philippinesMapPaths.js  Generated — do not edit by hand
+  App.jsx                 Page sections, navigation, theming, citations
+  index.css               Design tokens, both themes, component styles
 ```
 
-The site uses an inline SVG visual rather than images or a canvas. That keeps the hero crisp, lightweight, and free of stock/AI imagery. CSS supplies the low-cost motion; the reduced-motion media query disables it for visitors who request it.
+---
 
-## Content verification
+## Theming
 
-Catalog facts were verified from the public SapinSapin Hugging Face organization and public dataset/model cards on **16 August 2026**. This was a snapshot, not a live API fetch, on purpose: the homepage remains fast, predictable, and deployable without a backend.
+Colours are defined once as CSS custom properties holding space-separated RGB channels:
 
-Verified headline counts:
+```css
+:root            { --c-ink: 26 22 19; --c-paper: 251 247 240; /* … */ }
+[data-theme=dark]{ --c-ink: 240 233 222; --c-paper: 18 16 13; /* … */ }
+```
 
-- 513.3 speech hours = 448.2 h in `sapinsapin/pld` + 65.1 h in `sapinsapin/filipinospeechcorpus`.
-- 639,514 utterances/segments = 334,268 in PLD + 305,246 in Filipino Speech Corpus.
-- 10 Philippine languages in PLD.
-- 9 non-private datasets and 28 non-private models returned by the Hugging Face Hub API at the time of verification.
+`tailwind.config.js` maps its colour scale onto those variables, so ordinary utilities such
+as `text-ink/70` follow the active theme with no `dark:` prefixes anywhere in the markup.
 
-The catalog deliberately lists all nine datasets returned as non-private, including the two access-controlled livestream datasets. The `halo-livestream` display name maps to the Hub repository `sapinsapin/kumu-livestream-segmented`.
+> [!WARNING]
+> Tailwind only emits a colour-opacity modifier when the value exists in `theme.opacity`.
+> The default scale skips most integers, so `text-ink/68` silently produces **no rule** and
+> the element falls back to inheriting full-strength colour. The config defines every
+> integer from 0–100 to prevent this. If you add a new alpha, verify it renders.
 
-### Remaining `{{VERIFY}}` values
+Theme switching uses the View Transitions API for a circular wipe out of the toggle, and
+falls back to a short colour-only crossfade elsewhere. Both paths respect
+`prefers-reduced-motion`.
 
-These values are visible on the website exactly as `{{VERIFY}}` rather than being inferred:
+Two surfaces — the footer and the code sample — stay dark in **both** themes, so they carry
+their own tokens and their own `::selection` colours.
 
-| Location | Unverified item | Why |
-| --- | --- | --- |
-| `kumu-livestream-segmented` | size and license | The dataset is access-controlled and its public Hub metadata does not provide these fields. |
-| `kumu-livestream-raw` | size and license | The dataset is access-controlled and its public Hub metadata does not provide these fields. |
-| `BantayWika`, `halohalo`, `halo-bcl` | license | No license was supplied in the public Hub card metadata inspected for this snapshot. |
-| `qwen3vl-balitanlp-news-writer` | task and training dataset | Neither was supplied in the public Hub API metadata inspected for this snapshot. |
-| `llama31-8b-balitanlp-IT` | task | It had no public `pipeline_tag` in the inspected Hub metadata. |
+---
 
-Resolve each placeholder against the linked Hub card before a release that requires complete metadata. Do not replace a placeholder by guessing from a name, tag, or related model.
+## The hero map
 
-## Design rationale
+`scripts/prepare-map.mjs` downloads a public Philippine boundary, simplifies it, and
+projects it with an equirectangular projection using a `cos(midLat)` correction on
+longitude. Both axes share one scale — scaling them independently stretches the archipelago
+by roughly 14%.
 
-The visual system borrows the SapinSapin idea at an abstract level: thin stacked rules, restrained layered topography, and quietly nested cards. Deep ube establishes research-grade character; pandan is a sparse signal of growth. The editorial display face makes the mission feel human, while the compact sans-serif carries technical detail. Generous blank space and content-dense catalog cards keep the story confident without drifting into generic AI visual language.
+Language markers are projected through that **same** transform from real coordinates, so a
+marker cannot drift away from the geography it describes. Marker area is proportional to
+that language's 30-day model downloads (radius scales with the square root).
 
-## Accessibility and performance notes
+The bearing dial in the corner keeps a fixed north mark and rotates only a separate pointer,
+which tracks the active language layer. Clicking it steps to the next layer; right-click
+steps back.
 
-- Semantic landmarks, a visible keyboard focus treatment, link labels, native FAQ disclosure controls, and a mobile navigation disclosure are included.
-- Every animated element honors `prefers-reduced-motion`.
-- The page contains no animation library, image payload, tracking script, or client-side data fetch.
-- `robots.txt`, `sitemap.xml`, canonical metadata, Open Graph/Twitter metadata, Organization JSON-LD, and DataCatalog/Dataset JSON-LD are included.
+---
 
-Run Lighthouse against the deployed URL before launch. Scores depend on Vercel configuration, live font delivery, and any later integrations; the implementation is designed to support the requested 95+ targets, not to claim a score that has not been measured on production.
+## Citations
+
+Research claims carry numbered markers that link to a references block. Pointer users get a
+hover card; everyone else follows the link. Sources are listed in
+[ATTRIBUTION.md](ATTRIBUTION.md) alongside map and model-description provenance.
+
+Keep these sparse. A citation on every sentence reads as noise rather than rigour.
+
+---
+
+## Accessibility and performance
+
+- Semantic landmarks, a skip link, visible focus styles, labelled links, and native
+  disclosure controls for the FAQ and mobile menu.
+- Text contrast clears WCAG AA in both themes; the lowest measured ratio is ~4.5:1 on light
+  and ~6.2:1 on dark. `/60` is the lowest safe alpha for small text — do not go below it.
+- Every animation honours `prefers-reduced-motion`.
+- No tracking, no image payload, no runtime data fetching.
+- `robots.txt`, `sitemap.xml`, canonical and Open Graph metadata, Organization JSON-LD, and
+  DataCatalog JSON-LD are all included.
+
+Run Lighthouse against the deployed URL rather than trusting a claimed score here.
+
+---
+
+## Deployment
+
+Vercel builds from `main` using [`vercel.json`](vercel.json). Pushing to `main` deploys.
+
+The only manual step is running `npm run sync` beforehand so the committed snapshot is
+current.
