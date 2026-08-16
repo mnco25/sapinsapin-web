@@ -3,6 +3,41 @@
 @tailwind utilities;
 
 /* ==========================================================================
+   Font fallbacks
+   The webfonts load without blocking first paint (see index.html), so text is
+   painted in a fallback and swapped when the real face arrives. Left alone
+   that swap reflows the page — Fraunces is ~11% narrower than Georgia, which
+   moves every heading. These two faces re-cut the local fallbacks to the
+   webfonts' own metrics so the swap is close to invisible.
+
+   The numbers are measured, not estimated: rendering a pangram at 100px and
+   comparing advance width and fontBoundingBox ascent/descent gives
+   size-adjust = webfont width / fallback width, with the ascent and descent
+   overrides then divided by that same ratio so they resolve against the
+   adjusted em. Matching is exact at weight 400 and close at the heavier
+   weights, which is the usual trade — one fallback face cannot track every
+   weight of a variable font.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  size-adjust: 105.26%;
+  ascent-override: 92.15%;
+  descent-override: 22.80%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Fraunces Fallback';
+  src: local('Georgia');
+  size-adjust: 88.62%;
+  ascent-override: 110.59%;
+  descent-override: 29.34%;
+  line-gap-override: 0%;
+}
+
+/* ==========================================================================
    Tokens
    Every colour lives here as space-separated RGB channels so Tailwind's
    `<alpha-value>` utilities (text-ink/65, border-ink/10 …) and the rules below
@@ -132,7 +167,7 @@
     overflow-x: hidden;
     background: rgb(var(--c-paper));
     color: rgb(var(--c-ink));
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: Inter, 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   ::selection { background: rgb(var(--c-ube) / .28); color: rgb(var(--c-ink)); }
@@ -443,7 +478,7 @@
     font-size: .78rem; color: rgb(var(--c-ink) / .65);
   }
   .hero-evidence b {
-    font-family: Fraunces, Georgia, serif; font-size: 1.5rem; font-weight: 500;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.5rem; font-weight: 500;
     letter-spacing: -.05em; color: rgb(var(--c-ube));
   }
 
@@ -510,7 +545,7 @@
   .map-marker .marker-leader { stroke: rgb(var(--c-paper) / .5); stroke-width: .7; transition: stroke .3s ease; }
   .map-marker .marker-label {
     fill: rgb(var(--c-ink) / .68);
-    font-family: Inter, sans-serif; font-size: 8.4px; font-weight: 700; letter-spacing: .9px;
+    font-family: Inter, 'Inter Fallback', sans-serif; font-size: 8.4px; font-weight: 700; letter-spacing: .9px;
     transition: fill .3s ease;
     paint-order: stroke;
     stroke: rgb(var(--c-paper) / .75); stroke-width: 2.4px; stroke-linejoin: round;
@@ -593,7 +628,7 @@
     color: rgb(var(--c-ink) / .60);
   }
   .map-readout strong {
-    font-family: Fraunces, Georgia, serif; font-size: 1.32rem; font-weight: 500;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.32rem; font-weight: 500;
     letter-spacing: -.045em; line-height: 1.15; color: rgb(var(--c-ink));
   }
   .map-readout small { font-size: .68rem; color: rgb(var(--c-ink) / .60); }
@@ -607,7 +642,7 @@
   }
   .map-readout-stats dd {
     margin: .1rem 0 0;
-    font-family: Fraunces, Georgia, serif; font-size: 1.05rem; letter-spacing: -.04em;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.05rem; letter-spacing: -.04em;
     color: rgb(var(--c-ube));
   }
   .map-readout-tasks {
@@ -687,7 +722,7 @@
   .dataset-index { font-size: .72rem; font-variant-numeric: tabular-nums; color: rgb(var(--c-ink) / .60); }
   .dataset-title {
     margin-top: 1.4rem;
-    font-family: Fraunces, Georgia, serif; font-size: 1.75rem; font-weight: 500;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.75rem; font-weight: 500;
     line-height: 1.1; letter-spacing: -.05em; color: rgb(var(--c-ink));
   }
   .dataset-desc {
@@ -960,7 +995,7 @@
   .partner-mark {
     display: grid; height: 3rem; width: 3rem; flex: none; place-items: center;
     border-radius: .72rem; background: rgb(var(--c-ube)); color: #fbf7f0;
-    font-family: Fraunces, Georgia, serif; font-size: 1.1rem;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.1rem;
   }
 
   .faq summary {

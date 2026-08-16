@@ -259,20 +259,27 @@ function Nav({ theme, onToggleTheme }) {
   useEffect(() => {
     let frame = 0
     let lastY = window.scrollY
+    // Mirrors the attribute currently on <html>. Writing an attribute is a
+    // style invalidation even when the value is unchanged, so tracking the
+    // last value here keeps a long scroll down to two writes rather than one
+    // per animation frame.
+    let scrolled = null
     const mobileQuery = window.matchMedia('(max-width: 767px)')
     const onScroll = () => {
       if (frame) return
       frame = requestAnimationFrame(() => {
         const y = Math.max(0, window.scrollY)
-        document.documentElement.dataset.scrolled = String(y > 8)
+        const isScrolled = y > 8
+        if (isScrolled !== scrolled) {
+          scrolled = isScrolled
+          document.documentElement.dataset.scrolled = String(isScrolled)
+        }
 
         if (mobileQuery.matches) {
           const delta = y - lastY
           if (y < 48) setHidden(false)
           else if (delta > 6) { setHidden(true); closeMenus() }
           else if (delta < -6) setHidden(false)
-        } else if (hidden) {
-          setHidden(false)
         }
         lastY = y
         frame = 0
@@ -753,7 +760,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#12100D' : '#FBF7F0')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0D0C0B' : '#FBF7F0')
     try { localStorage.setItem('sapinsapin-theme', theme) } catch { /* Theme still works when storage is unavailable. */ }
   }, [theme])
 

@@ -29,9 +29,12 @@ export default {
         surface: themed('--c-surface'),
         line: themed('--c-line'),
       },
+      // The `… Fallback` faces are declared in index.css: local Georgia and
+      // Arial re-cut to the webfonts' metrics, so the swap when the real
+      // faces arrive does not reflow the page.
       fontFamily: {
-        display: ['Fraunces', 'Georgia', 'serif'],
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Fraunces Fallback', 'Georgia', 'serif'],
+        sans: ['Inter', 'Inter Fallback', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },
