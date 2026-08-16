@@ -714,6 +714,8 @@
   }
   .dataset-filters button.is-active { background: rgb(var(--c-ube)); border-color: rgb(var(--c-ube)); color: #fbf7f0; }
   .dataset-filters button.is-active span { background: rgb(255 255 255 / .22); color: #fbf7f0; }
+  [data-theme='dark'] .dataset-filters button.is-active { color: #12100d; }
+  [data-theme='dark'] .dataset-filters button.is-active span { background: rgb(18 16 13 / .16); color: #12100d; }
 
   .meta-label {
     color: rgb(var(--c-ink) / .60); font-size: .59rem; font-weight: 700;
@@ -804,6 +806,8 @@
     background: rgb(var(--c-ube)); border-color: rgb(var(--c-ube)); color: #fbf7f0;
   }
   .model-filters button.is-active span { background: rgb(255 255 255 / .22); color: #fbf7f0; }
+  [data-theme='dark'] .model-filters button.is-active { color: #12100d; }
+  [data-theme='dark'] .model-filters button.is-active span { background: rgb(18 16 13 / .16); color: #12100d; }
 
   /* Column header, shown only where the full grid is visible. */
   .model-head {
@@ -825,6 +829,7 @@
     display: none; border-radius: 999px; background: rgb(var(--c-ube) / .12);
     padding: .3rem .55rem; color: rgb(var(--c-ube));
     font-size: .64rem; font-weight: 700; white-space: nowrap;
+    justify-self: start; width: fit-content;
   }
   .model-task.is-unlisted {
     background: rgb(var(--c-ink) / .07); color: rgb(var(--c-ink) / .63);
@@ -832,13 +837,18 @@
   }
   /* Download counts read as a distribution, not just numbers. */
   .model-bar {
-    display: block; height: 3px; width: 100%; margin-top: .3rem;
-    border-radius: 999px; background: rgb(var(--c-ink) / .09); overflow: hidden;
+    display: block; height: 4px; width: 100%; margin-top: .35rem;
+    border-radius: 999px; background: rgb(var(--c-ink) / .08); overflow: hidden;
   }
   .model-bar i {
     display: block; height: 100%; width: 100%; border-radius: 999px;
-    background: linear-gradient(90deg, rgb(var(--c-ube)), rgb(var(--c-pandan)));
-    transform-origin: left center;
+    background: rgb(var(--c-ube));
+    transform-origin: right center;
+    opacity: .85;
+    transition: transform .3s ease, opacity .2s ease;
+  }
+  .model-row:hover .model-bar i {
+    opacity: 1;
   }
 
   /* Hover preview for a model row. Fixed positioning keeps it clear of the
@@ -911,6 +921,7 @@
     border-bottom: 1px solid var(--border-soft);
   }
   .code-sample {
+    position: relative; width: fit-content; max-width: 100%;
     overflow-x: auto; border: 1px solid var(--border-soft); border-radius: .85rem;
     background: var(--surface-code); padding: 1rem 1.1rem;
     color: #fbf7f0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import NumberFlow from '@number-flow/react'
 import { datasets, models, catalogSnapshot, totals } from './data/catalog'
-import { ArrowUpRight, Code, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
+import { ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
 import PhilippinesMap from './components/PhilippinesMap'
 import { describeModel } from './data/modelNotes'
 
@@ -551,7 +551,7 @@ function Models() {
   }, [])
 
   const [filter, setFilter] = useState('All models')
-  const [expanded, setExpanded] = useState(false)
+  const [displayCount, setDisplayCount] = useState(5)
 
   // Hover preview. Positioned fixed so it escapes the panel's overflow, and
   // flipped above the row when there is not enough room below.
@@ -582,11 +582,28 @@ function Models() {
   }
   const visible = filter === 'All models' ? ranked : ranked.filter((model) => taskOf(model) === filter)
 
-  // Only the top slice is rendered up front — 28 rows is a lot of DOM for a
-  // list most visitors will skim.
-  const initialCount = 10
-  const shown = expanded ? visible : visible.slice(0, initialCount)
-  const hidden = visible.length - shown.length
+  // Incremental pagination: show initial 5 -> next 5 (10) -> show all.
+  const shown = visible.slice(0, displayCount)
+  const isFullyExpanded = displayCount >= visible.length
+
+  const handleToggleDisplay = () => {
+    if (displayCount < 10 && visible.length > 10) {
+      setDisplayCount(10)
+    } else if (displayCount < visible.length) {
+      setDisplayCount(visible.length)
+    } else {
+      setDisplayCount(5)
+    }
+  }
+
+  let buttonText = ''
+  if (displayCount < 10 && visible.length > 10) {
+    buttonText = 'Show 5 more'
+  } else if (displayCount < visible.length) {
+    buttonText = `Show all ${visible.length} models`
+  } else {
+    buttonText = 'Show fewer'
+  }
 
   return <section id="models" className="section-shell scroll-mt-24 pt-28 sm:pt-40">
     <div className="models-panel">
@@ -604,7 +621,7 @@ function Models() {
           <button
             key={label}
             type="button"
-            onClick={() => { setFilter(label); setExpanded(false) }}
+            onClick={() => { setFilter(label); setDisplayCount(5) }}
             aria-pressed={filter === label}
             className={filter === label ? 'is-active' : ''}
           >
@@ -652,11 +669,11 @@ function Models() {
 
       {preview && <ModelPreview model={preview.model} style={preview.style} />}
 
-      {(hidden > 0 || expanded) && (
+      {visible.length > 5 && (
         <div className="model-more">
-          <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded}>
-            {expanded ? 'Show fewer' : `Show all ${visible.length} models`}
-            <span aria-hidden="true">{expanded ? '↑' : '↓'}</span>
+          <button type="button" onClick={handleToggleDisplay} aria-expanded={isFullyExpanded}>
+            {buttonText}
+            <span aria-hidden="true">{isFullyExpanded ? '↑' : '↓'}</span>
           </button>
           <p>Showing {shown.length} of {visible.length}{filter === 'All models' ? '' : ` · ${filter}`}</p>
         </div>
@@ -670,13 +687,50 @@ function Openness() {
   return <section id="open" className="scroll-mt-24 pt-28 sm:pt-40"><div className="open-section"><div className="section-shell"><div className="grid gap-14 lg:grid-cols-[.82fr_1.18fr] lg:gap-24"><SectionHeading eyebrow="Why open data matters" title={<>Infrastructure<br />for a plural <em className="text-ube">future.</em></>}>Open data is not a footnote. It is how public-interest research becomes durable, accountable infrastructure.</SectionHeading><Reveal className="grid gap-x-8 gap-y-0 border-t border-ink/10 sm:grid-cols-2">{principles.map(([title, copy], index) => <article className="border-b border-ink/10 py-6" key={title}><p className="font-display text-2xl tracking-[-.045em] text-ube/80">0{index + 1}</p><h3 className="mt-3 font-semibold tracking-[-.035em] text-ink">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/68">{copy}</p></article>)}</Reveal></div></div></div></section>
 }
 
+function CodeBlock() {
+  const [copied, setCopied] = useState(false)
+  const codeText = 'from datasets import load_dataset\n\ndataset = load_dataset("sapinsapin/pld")'
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(codeText)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* Fallback for clipboard permissions */
+    }
+  }
+
+  return (
+    <div className="code-sample mt-6 group">
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? 'Copied code snippet' : 'Copy code snippet'}
+        title={copied ? 'Copied!' : 'Copy code'}
+        className="absolute top-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/75 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/15 hover:text-white active:scale-95"
+      >
+        {copied ? (
+          <CheckIcon className="h-3.5 w-3.5 text-pandan" />
+        ) : (
+          <CopyIcon className="h-3.5 w-3.5 text-white/70 transition-colors group-hover:text-white" />
+        )}
+      </button>
+      <div className="pr-10">
+        <span className="text-pandan">from</span> datasets <span className="text-pandan">import</span> load_dataset<br /><br />
+        dataset = load_dataset(<span className="text-ube">&quot;sapinsapin/pld&quot;</span>)
+      </div>
+    </div>
+  )
+}
+
 function Contribute() {
   const cards = [
     { icon: Dataset, number: '01', title: 'Use the datasets', text: 'Start with a dataset card, read its documentation, and build something useful for a Philippine language.', cta: 'Browse datasets', href: `${hub}?tab=datasets` },
     { icon: Code, number: '02', title: 'Contribute code', text: 'Explore the public repositories, open an issue, improve a pipeline, or share a reproducible experiment.', cta: 'Open GitHub', href: github },
     { icon: MarkMono, number: '03', title: 'Contribute data', text: 'If you work with a Philippine language as a researcher, annotator, native speaker, or engineer, start a conversation in a project issue.', cta: 'Start a conversation', href: 'https://github.com/sapinsapin/halohalo/issues' },
   ]
-  return <section id="contribute" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="contribute-intro"><div><Eyebrow>It takes a village</Eyebrow><h2 className="mt-5 max-w-3xl font-display text-[clamp(2.5rem,5vw,5rem)] font-medium leading-[.96] tracking-[-.065em] text-ink">Help make Philippine AI <em className="text-ube">more possible.</em></h2></div><div className="max-w-md"><p className="text-[1.05rem] leading-7 text-ink/70">This work is designed to be used, questioned, and improved in public.</p><div className="code-sample mt-6"><span className="text-pandan">from</span> datasets <span className="text-pandan">import</span> load_dataset<br /><br />dataset = load_dataset(<span className="text-ube">&quot;sapinsapin/pld&quot;</span>)</div></div></div><Reveal className="mt-4 grid gap-4 md:grid-cols-3">{cards.map(({ icon: Icon, number, title, text, cta, href }) => <article key={title} className="contribute-card"><div className="flex items-center justify-between"><Icon className="h-7 w-7 text-ube" /><span className="text-xs text-ink/60">{number}</span></div><h3 className="mt-12 text-xl font-semibold tracking-[-.045em] text-ink">{title}</h3><p className="mt-3 min-h-[72px] text-sm leading-6 text-ink/68">{text}</p><ExternalLink href={href} className="text-link mt-8" label={cta}>{cta} <ArrowUpRight className="h-4 w-4" /></ExternalLink></article>)}</Reveal></section>
+  return <section id="contribute" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="contribute-intro"><div><Eyebrow>It takes a village</Eyebrow><h2 className="mt-5 max-w-3xl font-display text-[clamp(2.5rem,5vw,5rem)] font-medium leading-[.96] tracking-[-.065em] text-ink">Help make Philippine AI <em className="text-ube">more possible.</em></h2></div><div className="max-w-md"><p className="text-[1.05rem] leading-7 text-ink/70">This work is designed to be used, questioned, and improved in public.</p><CodeBlock /></div></div><Reveal className="mt-4 grid gap-4 md:grid-cols-3">{cards.map(({ icon: Icon, number, title, text, cta, href }) => <article key={title} className="contribute-card"><div className="flex items-center justify-between"><Icon className="h-7 w-7 text-ube" /><span className="text-xs text-ink/60">{number}</span></div><h3 className="mt-12 text-xl font-semibold tracking-[-.045em] text-ink">{title}</h3><p className="mt-3 min-h-[72px] text-sm leading-6 text-ink/68">{text}</p><ExternalLink href={href} className="text-link mt-8" label={cta}>{cta} <ArrowUpRight className="h-4 w-4" /></ExternalLink></article>)}</Reveal></section>
 }
 
 function PartnersAndFaq() {
