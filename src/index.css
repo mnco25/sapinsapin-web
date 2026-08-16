@@ -41,6 +41,9 @@
     --shadow-nav-scrolled: 0 10px 30px -12px rgb(33 27 18 / .22), 0 1px 2px rgb(33 27 18 / .05);
     --shadow-card: 0 18px 38px rgb(40 29 13 / .09);
     --shadow-float: 0 24px 48px -18px rgb(40 29 13 / .28);
+    /* Inert in light — surfaces there are already brighter than the ground,
+       so they need no help reading as raised. Dark redefines it. */
+    --edge-highlight: 0 0 transparent;
 
     --map-land-top: #6f52ab;
     --map-land-bottom: #4a3080;
@@ -64,46 +67,60 @@
     color-scheme: light;
   }
 
+  /* Dark is not "light with the values flipped". Three things carry it:
+     a genuinely deep, near-neutral ground so panels look lit rather than
+     painted; a real elevation ladder (ground → sunken → panel → raised) with
+     ~8–12 RGB points between rungs; and lifted secondary text, because the
+     same alpha reads far dimmer against black than it does against paper.
+     Warmth stays as a whisper in the surfaces and lives properly in the
+     accents, which is what stops the whole thing turning muddy brown. */
   [data-theme='dark'] {
-    --c-ink: 240 233 222;
-    --c-paper: 18 16 13;
-    --c-ube: 181 154 245;
-    --c-pandan: 156 199 118;
-    --c-cream: 226 205 163;
-    --c-surface: 30 26 22;
-    --c-line: 240 233 222;
+    --c-ink: 244 239 231;
+    --c-paper: 13 12 11;
+    --c-ube: 183 157 250;
+    --c-pandan: 164 206 126;
+    --c-cream: 231 212 173;
+    --c-surface: 26 24 21;
+    --c-line: 244 239 231;
 
-    --hero-bg: #191512;
-    --hero-glow-a: rgb(156 199 118 / .06);
-    --hero-glow-b: rgb(129 96 205 / .08);
-    --surface-raised: #211c17;
-    --surface-panel: #201b16;
-    --surface-sunken: #1d1814;
-    --surface-code: #0d0b09;
-    --nav-bg: rgb(24 21 17 / .72);
-    --nav-bg-scrolled: rgb(24 21 17 / .90);
-    --footer-bg: #0d0b09;
-    --footer-fg: 240 233 222;
+    --hero-bg: #121110;
+    --hero-glow-a: rgb(164 206 126 / .085);
+    --hero-glow-b: rgb(139 106 214 / .13);
+    --surface-raised: #1c1a17;
+    --surface-panel: #171613;
+    --surface-sunken: #131211;
+    --surface-code: #0a0a09;
+    --nav-bg: rgb(20 19 17 / .66);
+    --nav-bg-scrolled: rgb(18 17 15 / .88);
+    --footer-bg: #080807;
+    --footer-fg: 244 239 231;
 
-    --border-soft: rgb(240 233 222 / .12);
-    --border-strong: rgb(240 233 222 / .22);
-    --grid-line: rgb(240 233 222 / .05);
-    --shadow-nav: 0 1px 2px rgb(0 0 0 / .3);
-    --shadow-nav-scrolled: 0 12px 34px -14px rgb(0 0 0 / .7), 0 1px 2px rgb(0 0 0 / .4);
-    --shadow-card: 0 20px 40px rgb(0 0 0 / .45);
-    --shadow-float: 0 26px 52px -18px rgb(0 0 0 / .6);
+    --border-soft: rgb(244 239 231 / .10);
+    --border-strong: rgb(244 239 231 / .19);
+    --grid-line: rgb(244 239 231 / .042);
+    --shadow-nav: 0 1px 2px rgb(0 0 0 / .5);
+    --shadow-nav-scrolled: 0 16px 40px -16px rgb(0 0 0 / .85), 0 1px 2px rgb(0 0 0 / .55);
+    --shadow-card: 0 24px 48px -12px rgb(0 0 0 / .62), 0 2px 6px rgb(0 0 0 / .4);
+    --shadow-float: 0 32px 64px -22px rgb(0 0 0 / .78), 0 2px 8px rgb(0 0 0 / .45);
 
-    --map-land-top: #8a6bd0;
+    /* A hairline of light along the top edge of raised surfaces. It is the
+       cheapest possible read of "this panel catches the light", and it is what
+       separates a lit interface from a set of flat grey rectangles. */
+    --edge-highlight: inset 0 1px 0 rgb(255 255 255 / .045);
+
+    --map-land-top: #9575db;
     --map-land-bottom: #4e3489;
-    --map-extrude: #241a41;
-    --map-sea: rgb(240 233 222 / .045);
+    --map-extrude: #221838;
+    --map-sea: rgb(244 239 231 / .04);
 
     --open-bg:
-      radial-gradient(120% 105% at 6% 0%, rgb(129 96 205 / .20), transparent 58%),
-      radial-gradient(110% 100% at 100% 100%, rgb(110 150 74 / .16), transparent 55%),
-      #17140f;
-    --open-edge-top: .6;
-    --open-edge-bottom: .45;
+      radial-gradient(120% 105% at 6% 0%, rgb(139 106 214 / .17), transparent 58%),
+      radial-gradient(110% 100% at 100% 100%, rgb(110 150 74 / .12), transparent 55%),
+      #100f0d;
+    /* The old values put a bright purple wedge right on the section seam,
+       which read as a rendering artefact rather than a deliberate edge. */
+    --open-edge-top: .34;
+    --open-edge-bottom: .26;
 
     color-scheme: dark;
   }
@@ -714,8 +731,8 @@
   }
   .dataset-filters button.is-active { background: rgb(var(--c-ube)); border-color: rgb(var(--c-ube)); color: #fbf7f0; }
   .dataset-filters button.is-active span { background: rgb(255 255 255 / .22); color: #fbf7f0; }
-  [data-theme='dark'] .dataset-filters button.is-active { color: #12100d; }
-  [data-theme='dark'] .dataset-filters button.is-active span { background: rgb(18 16 13 / .16); color: #12100d; }
+  [data-theme='dark'] .dataset-filters button.is-active { color: #0d0c0b; }
+  [data-theme='dark'] .dataset-filters button.is-active span { background: rgb(13 12 11 / .18); color: #0d0c0b; }
 
   .meta-label {
     color: rgb(var(--c-ink) / .60); font-size: .59rem; font-weight: 700;
@@ -806,8 +823,8 @@
     background: rgb(var(--c-ube)); border-color: rgb(var(--c-ube)); color: #fbf7f0;
   }
   .model-filters button.is-active span { background: rgb(255 255 255 / .22); color: #fbf7f0; }
-  [data-theme='dark'] .model-filters button.is-active { color: #12100d; }
-  [data-theme='dark'] .model-filters button.is-active span { background: rgb(18 16 13 / .16); color: #12100d; }
+  [data-theme='dark'] .model-filters button.is-active { color: #0d0c0b; }
+  [data-theme='dark'] .model-filters button.is-active span { background: rgb(13 12 11 / .18); color: #0d0c0b; }
 
   /* Column header, shown only where the full grid is visible. */
   .model-head {
@@ -1070,7 +1087,81 @@
 
   /* ---------------------------------------------------------------- reveal */
   .reveal > * { opacity: 1; }
+
 }
+
+/* ==========================================================================
+   Dark-mode refinements
+   Unlayered on purpose: these override Tailwind utilities, which live in the
+   `utilities` layer and would otherwise win over anything inside
+   `@layer components` regardless of selector specificity.
+   ========================================================================== */
+
+/* ------------------------------------------------ dark text hierarchy */
+/* Light text on a dark ground loses contrast much faster as alpha drops
+   than dark text on paper does, so the secondary tiers that read as calm in
+   light read as washed-out in dark. Each tier is lifted roughly 8–10 points
+   — enough to restore legibility, small enough that the hierarchy between
+   primary, secondary, and tertiary text is preserved rather than flattened.
+   The attribute selector outranks the bare utility/component class, so these
+   win without !important and light mode keeps its original values. */
+[data-theme='dark'] .text-ink\/60 { color: rgb(var(--c-ink) / .70); }
+[data-theme='dark'] .text-ink\/63 { color: rgb(var(--c-ink) / .72); }
+[data-theme='dark'] .text-ink\/65 { color: rgb(var(--c-ink) / .74); }
+[data-theme='dark'] .text-ink\/68 { color: rgb(var(--c-ink) / .76); }
+[data-theme='dark'] .text-ink\/70 { color: rgb(var(--c-ink) / .78); }
+[data-theme='dark'] .text-ink\/72 { color: rgb(var(--c-ink) / .80); }
+
+[data-theme='dark'] .eyebrow { color: rgb(var(--c-ink) / .72); }
+[data-theme='dark'] .eyebrow-rule { background: rgb(var(--c-ink) / .45); }
+[data-theme='dark'] .hero-evidence span { color: rgb(var(--c-ink) / .74); }
+[data-theme='dark'] .dataset-desc { color: rgb(var(--c-ink) / .78); }
+[data-theme='dark'] .dataset-index,
+[data-theme='dark'] .meta-more,
+[data-theme='dark'] .meta-unstated,
+[data-theme='dark'] .model-preview-foot { color: rgb(var(--c-ink) / .68); }
+[data-theme='dark'] .dataset-filters button,
+[data-theme='dark'] .model-filters button,
+[data-theme='dark'] .reference-meta,
+[data-theme='dark'] .reference-note { color: rgb(var(--c-ink) / .76); }
+[data-theme='dark'] .nav-menu-panel a { color: rgb(var(--c-ink) / .82); }
+[data-theme='dark'] .footer-body { color: rgb(var(--footer-fg) / .76); }
+[data-theme='dark'] .footer-links a { color: rgb(var(--footer-fg) / .80); }
+[data-theme='dark'] .footer-label,
+[data-theme='dark'] .footer-rule { color: rgb(var(--footer-fg) / .66); }
+
+/* ------------------------------------------------------- dark elevation */
+/* Kept in one block rather than sprinkled through each component, so the
+   dark-only treatment stays legible and light mode is provably untouched.
+   Every raised surface gets the top-edge highlight; the ones that already
+   carry a shadow keep it and gain the highlight alongside. */
+[data-theme='dark'] .dataset-card,
+[data-theme='dark'] .contribute-card,
+[data-theme='dark'] .partner-card,
+[data-theme='dark'] .demo-card,
+[data-theme='dark'] .models-panel,
+[data-theme='dark'] .demo-panel,
+[data-theme='dark'] .map-readout,
+[data-theme='dark'] .layer-band {
+  box-shadow: var(--edge-highlight);
+}
+[data-theme='dark'] .dataset-card:hover,
+[data-theme='dark'] .contribute-card:hover {
+  box-shadow: var(--edge-highlight), var(--shadow-card);
+}
+[data-theme='dark'] .language-map,
+[data-theme='dark'] .nav-menu-panel,
+[data-theme='dark'] .cite-card,
+[data-theme='dark'] .model-preview {
+  box-shadow: var(--edge-highlight), var(--shadow-float);
+}
+/* The footer is the darkest band on the page in both themes, but in dark it
+   sits only a few points below the ground and would otherwise dissolve into
+   it. A brighter rule gives it back its edge. */
+[data-theme='dark'] .site-footer { border-top-color: rgb(244 239 231 / .07); }
+/* Code stays the deepest surface, so its own border needs to come from the
+   light side rather than the (now nearly identical) page ground. */
+[data-theme='dark'] .code-sample { border-color: rgb(244 239 231 / .08); }
 
 /* ==========================================================================
    Responsive
