@@ -1,9 +1,10 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import NumberFlow from '@number-flow/react'
 import { datasets, models, catalogSnapshot, totals } from './data/catalog'
-import { ArrowDown, ArrowUp, ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
+import { ArrowDown, ArrowUp, ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono } from './components/Icons'
+import ThemeToggle from './components/ThemeToggle'
 import PhilippinesMap from './components/PhilippinesMap'
+import { useTheme } from './lib/theme'
 import { describeModel } from './data/modelNotes'
 import { languages as demoLanguages } from './data/spaceManifest'
 
@@ -209,20 +210,6 @@ function useActiveSection() {
     return () => observer.disconnect()
   }, [])
   return activeId
-}
-
-function ThemeToggle({ theme, onToggle }) {
-  const isDark = theme === 'dark'
-  return <button
-    type="button"
-    className="theme-toggle"
-    onClick={onToggle}
-    aria-pressed={isDark}
-    aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-  >
-    <Sun className="theme-sun h-[1.05rem] w-[1.05rem]" />
-    <Moon className="theme-moon h-[1.05rem] w-[1.05rem]" />
-  </button>
 }
 
 function Nav({ theme, onToggleTheme }) {
@@ -832,37 +819,7 @@ function Footer() {
 }
 
 function App() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light')
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0D0C0B' : '#FBF7F0')
-    try { localStorage.setItem('sapinsapin-theme', theme) } catch { /* Theme still works when storage is unavailable. */ }
-  }, [theme])
-
-  // Circular wipe out of the toggle where View Transitions exist; a short
-  // colour-only crossfade everywhere else, removed once it has run so the
-  // page is never left with global transitions attached.
-  const toggleTheme = useCallback((event) => {
-    const root = document.documentElement
-    const next = root.dataset.theme === 'dark' ? 'light' : 'dark'
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    const target = event?.currentTarget
-    if (target?.getBoundingClientRect) {
-      const rect = target.getBoundingClientRect()
-      root.style.setProperty('--wipe-x', `${rect.left + rect.width / 2}px`)
-      root.style.setProperty('--wipe-y', `${rect.top + rect.height / 2}px`)
-    }
-
-    if (reduceMotion || typeof document.startViewTransition !== 'function') {
-      root.classList.add('theme-sweep')
-      window.setTimeout(() => root.classList.remove('theme-sweep'), 520)
-      setTheme(next)
-      return
-    }
-    document.startViewTransition(() => flushSync(() => setTheme(next)))
-  }, [])
+  const [theme, toggleTheme] = useTheme()
 
   // Anchor targets are rendered by React, so a #ref-… deep link has nothing to
   // scroll to at load time. Re-run the jump once the tree is on the page.

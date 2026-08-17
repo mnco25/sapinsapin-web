@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#FBF7F0" />
+    <!-- Same pre-paint theme resolve as index.html. Arriving at an error page
+         in the wrong palette and watching it correct itself would read as a
+         second thing having gone wrong. -->
+    <script>
+      (function () {
+        var theme = 'light'
+        try { theme = localStorage.getItem('sapinsapin-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') } catch (e) { /* private mode */ }
+        var root = document.documentElement
+        root.dataset.theme = theme
+        root.style.colorScheme = theme
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0D0C0B' : '#FBF7F0'
+      })()
+    </script>
+
+    <!-- ===== Favicons ===== -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- ===== Meta ===== -->
+    <title>404 — Page not found · SapinSapin AI</title>
+    <meta name="description" content="That address is not part of the SapinSapin AI site. Find the datasets, models, live speech demo, and Hugging Face organisation from here." />
+    <!-- noindex, because this document is served under every address that does
+         not resolve; `follow` so the links out of it still pass crawlers back
+         to the real pages. No canonical tag: this page has no canonical URL. -->
+    <meta name="robots" content="noindex, follow" />
+    <meta property="og:title" content="404 — Page not found · SapinSapin AI" />
+    <meta property="og:description" content="That address is not part of the SapinSapin AI site." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SapinSapin AI" />
+
+    <!-- ===== Font Loading ===== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600;700&display=swap" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/entry-404.jsx"></script>
+
+    <!-- The interactive half of this page — the trace and the ranked
+         suggestions — needs JavaScript. The way out of a 404 must not. -->
+    <noscript>
+      <div style="max-width:46rem;margin:0 auto;padding:3rem 1.5rem;font-family:Georgia,serif;color:#1A1613;background:#FBF7F0">
+        <h1 style="font-size:2.5rem;letter-spacing:-.04em">404 — page not found</h1>
+        <p style="font-size:1.05rem;line-height:1.7;color:#444">Nothing on this site answers to that address. Try one of these instead:</p>
+        <ul style="font-size:1.05rem;line-height:2">
+          <li><a href="/">Homepage</a></li>
+          <li><a href="/#demo">Live speech demo</a></li>
+          <li><a href="/#work">Data collections</a></li>
+          <li><a href="/#models">Models</a></li>
+          <li><a href="/#contribute">Contribute</a></li>
+          <li><a href="https://huggingface.co/sapinsapin">Hugging Face organisation</a></li>
+          <li><a href="https://github.com/sapinsapin">GitHub</a></li>
+        </ul>
+      </div>
+    </noscript>
+  </body>
+</html>

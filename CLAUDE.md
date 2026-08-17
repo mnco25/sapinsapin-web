@@ -69,6 +69,8 @@ scripts/sync-catalog.mjs   →   src/data/hubSnapshot.js   (generated, do not ed
 ### Layout
 
 ```
+index.html                   Homepage document
+404.html                     Error document — see "The 404 page" below
 scripts/
   sync-catalog.mjs        Hub API → hubSnapshot.js (run before deploy)
   sync-space.mjs           Space config → spaceManifest.js (run before deploy)
@@ -77,9 +79,12 @@ scripts/
 src/
   components/
     Icons.jsx              Inline SVG icon set and the brand mark
+    ThemeToggle.jsx         The sun/moon button, shared by both page roots
     PhilippinesMap.jsx      Hero map, bearing dial, language readout
     SpeechConsole.jsx       The live demo: all three capabilities, lazy-loaded
+    SignalTrace.jsx         404 only: the requested URL drawn as a waveform
   lib/
+    theme.js                useTheme() — palette state and the view-transition wipe
     spaceClient.js          Every call to the Space — queue, prep, errors
     audio.js                 Decode/resample/encode to 16 kHz mono WAV
   data/
@@ -88,18 +93,27 @@ src/
     modelNotes.js            Plain-language descriptions for model hover cards
     philippinesMapPaths.js   Generated — do not edit by hand
     spaceManifest.js         Generated — do not edit by hand
+  main.jsx                   Entry for index.html
+  entry-404.jsx              Entry for 404.html
   App.jsx                    All page sections, nav, theming, citations (single file)
+  NotFound.jsx               The 404 page root: nav, error panel, recovery, footer
   index.css                  Design tokens, both themes, component styles
 ```
 
 `App.jsx` is one file containing every section as its own function component (`Hero`,
 `Demo`, `Problem`, `Impact`, `Datasets`, `Models`, `Openness`, `Contribute`,
-`PartnersAndFaq`, `Footer`, plus shared helpers like `Cite`, `Reveal`, `CountUp`,
-`ThemeToggle`, `Nav`) rather than being split into per-file components. Follow that
-convention rather than introducing a new components directory for section content.
-`PhilippinesMap.jsx` and `SpeechConsole.jsx` are the exceptions and not a precedent for
-splitting sections: both are self-contained interactive widgets, and the prose around them
-still lives in `Hero()` and `Demo()`.
+`PartnersAndFaq`, `Footer`, plus shared helpers like `Cite`, `Reveal`, `CountUp`, `Nav`)
+rather than being split into per-file components. Follow that convention rather than
+introducing a new components directory for section content. `PhilippinesMap.jsx` and
+`SpeechConsole.jsx` are the exceptions and not a precedent for splitting sections: both are
+self-contained interactive widgets, and the prose around them still lives in `Hero()` and
+`Demo()`.
+
+`NotFound.jsx` is not an exception to that rule either — it is a **second page root**, a
+sibling of `App.jsx` rather than a piece of it, and it follows the same one-file convention
+for its own sections. The only things genuinely shared between the two roots live in
+`components/Icons.jsx`, `components/ThemeToggle.jsx` and `lib/theme.js`; anything else
+either page needs should be written where that page lives.
 
 ### The live demo
 
@@ -167,6 +181,41 @@ first-paint path and a visitor who never scrolls never contacts the Space at all
 (`/_fn*`) is deliberately left unwired — anonymous landing-page traffic would pollute the
 Space's rating store; the "Open in the Space" link is the path for people who want to rate.
 
+### The 404 page
+
+`404.html` is a **second Vite entry**, not a client-side route. That is the whole reason it
+works: the site is static with no router and `vercel.json` adds no rewrite, so an address
+that does not resolve is a real miss — Vercel answers it with `dist/404.html` and a real
+`404` status, and the address bar still holds what the visitor asked for. A catch-all
+rewrite to `index.html` would break all three of those at once. Do not add one.
+
+`src/NotFound.jsx` reads that address and does three things with it, none of which touch
+the network — the page contacts nothing at all, which is worth keeping true:
+
+1. **Quotes it back.** "Page not found" without saying *which* page leaves the reader
+   unable to tell a typo from a dead link. Printed through `readRequestedRoute()`, which
+   strips control characters and caps the length; React escapes it on the way into the DOM.
+2. **Draws it** (`SignalTrace.jsx`). The URL is hashed (FNV-1a) into a seeded PRNG and
+   shaped into a speech-like waveform, then swept once as if it were being transcribed —
+   ending in `NO TRANSCRIPT`, with the tint draining back out of the read half. It is
+   deterministic, so the same bad link always draws the same trace. The card says in plain
+   words that it is not audio and that nothing was sent anywhere; a speech project drawing
+   a waveform on an error page owes the reader that.
+3. **Guesses what was meant.** A `destinations` table is ranked against the address with a
+   small fuzzy scorer (whole-string subsequence, plus a per-word substring pass so that
+   `/whisper-small-pld-fil` still finds the model catalog), and the search field is
+   pre-filled with the words from the failed path. Below `MATCH_FLOOR` the page shows the
+   full directory rather than an empty list — a search on an error page that answers
+   "nothing found" has failed twice.
+
+The field takes `/` and `⌘K`, and `↓`/`↑` move real focus between the results rather than
+faking a listbox with `aria-activedescendant` pointing at anchors. `Enter` only commits
+when there is a genuine ranked best answer.
+
+When adding a section to the homepage, add it to `destinations` too — otherwise the 404 can
+never suggest it. Sections use `/#id` hrefs, which is why the 404 nav carries no anchor
+links of its own and no sliding indicator pill: every link here is a cross-document jump.
+
 ### Theming
 
 Colors are CSS custom properties holding space-separated RGB channels, switched via
@@ -213,3 +262,8 @@ citations sparse — one on every sentence reads as noise, not rigor.
 
 Vercel builds from `main` using `vercel.json`. Pushing to `main` deploys. The only manual
 step is running `npm run sync` beforehand so the committed snapshot is current.
+
+The build emits two documents: `dist/index.html` and `dist/404.html`. Vercel serves the
+second for any path that does not resolve to a file, with a `404` status — which depends on
+there being no catch-all rewrite in `vercel.json`. After a deploy, `curl -I` any nonsense
+path to confirm it still answers `404` rather than `200`.

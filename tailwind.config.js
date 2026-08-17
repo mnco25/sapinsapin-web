@@ -10,7 +10,7 @@ const themed = (variable) => ({ opacityValue }) =>
     : `rgb(var(${variable}) / ${opacityValue})`
 
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: ['./index.html', './404.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       // Tailwind only emits a colour-opacity modifier when the value exists in

@@ -86,22 +86,43 @@ or sibling model — resolve them on the Hub card itself, or leave them.
 ## Project layout
 
 ```
+index.html                Homepage document
+404.html                  Error document (a second Vite entry, not a route)
 scripts/
   sync-catalog.mjs        Hub API → hubSnapshot.js (run before deploy)
+  sync-space.mjs          Space config → spaceManifest.js (run before deploy)
   prepare-map.mjs         GeoJSON → simplified SVG paths + projected anchors
   prepare-icons.mjs       Brand mark → apple-touch-icon.png, favicon-32.png
 src/
   components/
     Icons.jsx             Inline SVG icon set and the brand mark
+    ThemeToggle.jsx       The sun/moon button, shared by both page roots
     PhilippinesMap.jsx    Hero map, bearing dial, language readout
+    SpeechConsole.jsx     The live demo, lazy-loaded
+    SignalTrace.jsx       404 only: the requested URL drawn as a waveform
+  lib/
+    theme.js              useTheme() — palette state and the view-transition wipe
+    spaceClient.js        Every call to the demo Space — queue, prep, errors
+    audio.js              Decode/resample/encode to 16 kHz mono WAV
   data/
     catalog.js            Editorial copy, merged with the live snapshot
     hubSnapshot.js        Generated — do not edit by hand
     modelNotes.js         Plain-language descriptions for model hover cards
     philippinesMapPaths.js  Generated — do not edit by hand
+    spaceManifest.js      Generated — do not edit by hand
   App.jsx                 Page sections, navigation, theming, citations
+  NotFound.jsx            The 404 page: error panel, signal trace, route recovery
   index.css               Design tokens, both themes, component styles
 ```
+
+### The 404 page
+
+`404.html` is built as a second entry rather than handled by a router, so a bad address
+gets a real `404` status and keeps the URL the visitor typed. The page prints that address,
+draws it as a deterministic speech-like waveform that decodes to nothing, and fuzzy-matches
+it against the site's real destinations to suggest where they meant to go — all in the
+browser, with no network requests. Adding a section to the homepage means adding it to the
+`destinations` table in `src/NotFound.jsx` so the 404 can suggest it.
 
 ---
 

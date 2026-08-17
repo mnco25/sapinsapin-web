@@ -1406,6 +1406,231 @@
   /* ---------------------------------------------------------------- reveal */
   .reveal > * { opacity: 1; }
 
+  /* ------------------------------------------------------------------- 404 */
+  /* The error document (404.html → src/NotFound.jsx). It borrows the hero
+     frame, the nav shell and the footer wholesale, so a visitor who lands here
+     from a stale link is still obviously on the same site. Everything below is
+     only the parts that have no counterpart on the homepage. */
+  .nf-main { padding-bottom: 1rem; }
+  .nf-hero-wrap { position: relative; overflow: hidden; padding: .75rem 1rem 0; }
+  .nf-hero {
+    position: relative; overflow: hidden;
+    display: grid; align-items: center; gap: 2.25rem;
+    border-radius: 2rem;
+    padding: 2.5rem 1.5rem;
+    /* Shorter than the homepage hero on purpose. A full-viewport error page
+       hides the one thing the reader actually needs — the suggestions — below
+       the fold, so the frame stops just high enough to promise more. */
+    min-height: min(34rem, calc(100svh - var(--nav-block) - 6rem));
+  }
+  .nf-title {
+    margin-top: 1.5rem;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif;
+    font-size: clamp(2.7rem, 5.4vw, 5.4rem); font-weight: 500;
+    line-height: .93; letter-spacing: -.068em; color: rgb(var(--c-ink));
+  }
+  .nf-lede {
+    margin-top: 1.4rem; max-width: 33rem;
+    font-size: 1rem; line-height: 1.75; color: rgb(var(--c-ink) / .72);
+    text-wrap: pretty;
+  }
+  /* The address is quoted back verbatim, because "page not found" without
+     saying *which* page leaves the reader unable to tell a typo from a dead
+     link. Monospace, and allowed to break anywhere — some of these are long. */
+  .nf-route {
+    display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .7rem;
+    margin-top: 1.5rem; max-width: 36rem;
+    border-radius: .8rem; border: 1px dashed var(--border-strong);
+    background: rgb(var(--c-paper) / .5);
+    padding: .6rem .8rem;
+  }
+  .nf-route span {
+    font-size: .58rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: rgb(var(--c-ink) / .55);
+  }
+  .nf-route code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .8rem; color: rgb(var(--c-ube)); overflow-wrap: anywhere;
+  }
+
+  /* ------------------------------------------------------ 404 · signal trace */
+  /* Deliberately shaped like the demo's result stage: same sunken surface, same
+     uppercase label row, same monospace model line. The joke only lands if it
+     looks like the place a transcript would have appeared. */
+  .nf-trace {
+    display: grid; gap: .75rem;
+    border-radius: 1.25rem; border: 1px solid var(--border-soft);
+    background: var(--surface-sunken);
+    box-shadow: var(--shadow-card);
+    padding: 1.1rem;
+  }
+  .nf-trace-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+  .nf-trace-label {
+    font-size: .6rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: rgb(var(--c-ink) / .55);
+  }
+  .nf-trace[data-phase='scanning'] .nf-trace-label { color: rgb(var(--c-ube)); }
+  .nf-trace-sig {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .64rem; color: rgb(var(--c-ink) / .45);
+  }
+
+  .nf-trace-stage {
+    height: 8.5rem; border-radius: .8rem;
+    border: 1px solid var(--border-soft);
+    background: rgb(var(--c-paper) / .5);
+    padding: .6rem .5rem;
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+  .nf-trace-stage svg { display: block; height: 100%; width: 100%; }
+  .nf-trace-bars rect { fill: rgb(var(--c-ink) / .17); }
+  /* The read half is tinted during the pass and then drains back out once the
+     pass finishes with nothing — the colour leaving is the failure. Under a
+     cursor it lights again, so scrubbing feels like re-reading the signal. */
+  .nf-trace-bars.is-read rect { fill: rgb(var(--c-ube)); transition: fill .5s ease; }
+  .nf-trace[data-phase='settled'] .nf-trace-bars.is-read rect { fill: rgb(var(--c-ink) / .34); }
+  .nf-trace[data-scrub='true'] .nf-trace-bars.is-read rect { fill: rgb(var(--c-ube)); transition: fill .12s linear; }
+
+  .nf-trace-cursor line {
+    stroke: rgb(var(--c-ube)); stroke-width: 1.5; stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .nf-trace-cursor { opacity: 0; transition: opacity .35s ease; }
+  .nf-trace[data-phase='scanning'] .nf-trace-cursor,
+  .nf-trace[data-scrub='true'] .nf-trace-cursor { opacity: 1; }
+
+  .nf-trace-readout {
+    display: grid; grid-template-columns: repeat(3, auto) 1fr; align-items: center; gap: .35rem .9rem;
+    margin: 0; border-top: 1px solid var(--border-soft); padding-top: .7rem;
+  }
+  .nf-trace-readout dt {
+    font-size: .52rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: rgb(var(--c-ink) / .55);
+  }
+  .nf-trace-readout dd {
+    margin: .1rem 0 0;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif; font-size: 1.05rem;
+    letter-spacing: -.04em; color: rgb(var(--c-ube)); font-variant-numeric: tabular-nums;
+  }
+  .nf-trace-null { color: rgb(var(--c-ink) / .4) !important; }
+  .nf-trace-action { justify-self: end; }
+  .nf-trace-action button {
+    border-radius: 999px; border: 1px solid var(--border-strong);
+    background: rgb(var(--c-paper) / .7); padding: .3rem .7rem;
+    font-size: .68rem; font-weight: 600; color: rgb(var(--c-ink) / .78);
+    transition: border-color .2s, color .2s, background-color .2s;
+  }
+  .nf-trace-action button:hover { border-color: rgb(var(--c-ube) / .5); color: rgb(var(--c-ube)); }
+  .nf-trace-note { font-size: .68rem; line-height: 1.55; color: rgb(var(--c-ink) / .5); }
+
+  /* ----------------------------------------------------------- 404 · search */
+  .nf-recovery { width: min(100% - 2rem, 1200px); margin: 4rem auto 0; }
+  .nf-recovery-head { max-width: 42rem; }
+  .nf-recovery-title {
+    margin-top: 1.25rem;
+    font-family: Fraunces, 'Fraunces Fallback', Georgia, serif;
+    font-size: clamp(1.9rem, 3.4vw, 3rem); font-weight: 500;
+    line-height: 1.02; letter-spacing: -.055em; color: rgb(var(--c-ink));
+  }
+  .nf-recovery-copy { margin-top: 1rem; max-width: 34rem; font-size: .95rem; line-height: 1.65; color: rgb(var(--c-ink) / .68); }
+
+  .nf-search {
+    position: relative; display: flex; align-items: center; gap: .6rem;
+    margin-top: 1.75rem;
+    border-radius: 999px; border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    padding: 0 .8rem 0 1rem;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .nf-search:focus-within { border-color: rgb(var(--c-ube) / .6); box-shadow: 0 0 0 4px rgb(var(--c-ube) / .12); }
+  .nf-search-icon { flex: none; height: 1rem; width: 1rem; color: rgb(var(--c-ink) / .45); }
+  .nf-search input {
+    flex: 1; min-width: 0; height: 3.4rem;
+    border: 0; background: none; color: rgb(var(--c-ink));
+    font: inherit; font-size: .95rem; letter-spacing: -.01em;
+  }
+  .nf-search input:focus { outline: none; }
+  .nf-search input::placeholder { color: rgb(var(--c-ink) / .42); }
+  .nf-search-clear {
+    flex: none; border-radius: 999px; border: 1px solid var(--border-soft);
+    padding: .28rem .7rem; font-size: .68rem; font-weight: 600; color: rgb(var(--c-ink) / .65);
+    transition: border-color .2s, color .2s;
+  }
+  .nf-search-clear:hover { border-color: rgb(var(--c-ube) / .5); color: rgb(var(--c-ube)); }
+  /* The shortcut hint is for pointer-and-keyboard users and is meaningless on
+     touch, where there is no key to press. */
+  .nf-search-kbd {
+    display: none; flex: none;
+    border-radius: .4rem; border: 1px solid var(--border-soft);
+    background: rgb(var(--c-ink) / .05);
+    padding: .1rem .42rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .68rem;
+    color: rgb(var(--c-ink) / .5);
+  }
+  @media (hover: hover) and (min-width: 640px) { .nf-search-kbd { display: block; } }
+
+  .nf-search-count {
+    margin-top: .85rem; padding-left: .2rem;
+    font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+    color: rgb(var(--c-ink) / .55);
+  }
+
+  .nf-results { display: grid; gap: .5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .nf-result {
+    display: grid; grid-template-columns: 2rem minmax(0, 1fr); align-items: start; gap: .35rem .9rem;
+    border-radius: 1rem; border: 1px solid var(--border-soft);
+    background: var(--surface-raised);
+    padding: 1rem 1.1rem;
+    transition: border-color .22s ease, transform .22s ease, box-shadow .22s ease;
+  }
+  .nf-result:hover { border-color: rgb(var(--c-ube) / .4); transform: translateY(-2px); box-shadow: var(--shadow-card); }
+  .nf-result-icon {
+    display: grid; place-items: center; height: 2rem; width: 2rem; grid-row: span 2;
+    border-radius: 50%; border: 1px solid var(--border-soft);
+    color: rgb(var(--c-ube)); background: rgb(var(--c-ube) / .08);
+  }
+  .nf-result[data-kind='external'] .nf-result-icon { color: rgb(var(--c-pandan)); background: rgb(var(--c-pandan) / .1); }
+  .nf-result-main { display: grid; gap: .2rem; min-width: 0; }
+  .nf-result-title { font-size: .95rem; font-weight: 650; letter-spacing: -.025em; color: rgb(var(--c-ink)); }
+  .nf-result-blurb { font-size: .82rem; line-height: 1.5; color: rgb(var(--c-ink) / .62); }
+  .nf-result-meta {
+    grid-column: 2; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .8rem;
+    margin-top: .25rem;
+  }
+  .nf-result-kind {
+    border-radius: 999px; border: 1px solid var(--border-soft);
+    padding: .12rem .55rem;
+    font-size: .6rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: rgb(var(--c-ink) / .5);
+  }
+  /* A bar rather than a bare percentage: the number alone invites the reader to
+     treat a fuzzy string score as a confidence, which it is not. */
+  .nf-result-score { display: flex; align-items: center; gap: .5rem; }
+  .nf-result-score i {
+    display: block; height: 3px; width: 4.5rem; border-radius: 999px;
+    background: rgb(var(--c-ube)); transform-origin: left;
+    box-shadow: 0 0 0 1px rgb(var(--c-ink) / .07);
+  }
+  .nf-result-score b {
+    font-size: .66rem; font-weight: 600; font-variant-numeric: tabular-nums;
+    color: rgb(var(--c-ink) / .55);
+  }
+
+  @media (min-width: 640px) {
+    .nf-hero-wrap { padding-inline: 1.5rem; }
+    .nf-hero { padding: 3rem 2.5rem; }
+    .nf-recovery { width: min(100% - 3rem, 1200px); }
+    .nf-result { grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; }
+    .nf-result-meta { grid-column: 3; grid-row: span 2; margin-top: 0; justify-content: flex-end; }
+  }
+
+  @media (min-width: 1024px) {
+    .nf-hero-wrap { padding-inline: 2.25rem; }
+    .nf-hero { grid-template-columns: 1fr minmax(0, .82fr); gap: 3.5rem; padding: 3.5rem 4rem; }
+    .nf-recovery { width: min(100% - 4.5rem, 1200px); }
+  }
+
 }
 
 /* ==========================================================================
@@ -1472,6 +1697,24 @@
 [data-theme='dark'] .model-preview {
   box-shadow: var(--edge-highlight), var(--shadow-float);
 }
+[data-theme='dark'] .nf-trace,
+[data-theme='dark'] .nf-result {
+  box-shadow: var(--edge-highlight);
+}
+[data-theme='dark'] .nf-result:hover { box-shadow: var(--edge-highlight), var(--shadow-card); }
+[data-theme='dark'] .nf-lede { color: rgb(var(--c-ink) / .80); }
+[data-theme='dark'] .nf-recovery-copy,
+[data-theme='dark'] .nf-result-blurb { color: rgb(var(--c-ink) / .74); }
+[data-theme='dark'] .nf-trace-note,
+[data-theme='dark'] .nf-trace-sig,
+[data-theme='dark'] .nf-search-count,
+[data-theme='dark'] .nf-result-kind,
+[data-theme='dark'] .nf-result-score b { color: rgb(var(--c-ink) / .64); }
+/* The unread half of the trace has to stay visible against a much darker
+   stage than the paper one it was tuned on. */
+[data-theme='dark'] .nf-trace-bars rect { fill: rgb(var(--c-ink) / .22); }
+[data-theme='dark'] .nf-trace[data-phase='settled'] .nf-trace-bars.is-read rect { fill: rgb(var(--c-ink) / .42); }
+
 /* The footer is the darkest band on the page in both themes, but in dark it
    sits only a few points below the ground and would otherwise dissolve into
    it. A brighter rule gives it back its edge. */
@@ -1563,6 +1806,11 @@
   .hero-rise-3 { animation-delay: .19s; }
   .hero-rise-4 { animation-delay: .26s; }
   .language-map { animation: visual-in .95s cubic-bezier(.2, .7, .2, 1) both .18s; }
+  /* The 404's trace arrives the same way the hero map does, and its own sweep
+     starts on mount — so by the time the card has settled, the pass across it
+     is already under way. With reduced motion the card is simply there and the
+     trace is drawn complete (SignalTrace checks the query itself). */
+  .nf-trace-slot { animation: visual-in .9s cubic-bezier(.2, .7, .2, 1) both .2s; }
 
   /* The skeleton keeps the shape of the answer it is standing in for. Only the
      shimmer is motion — with reduced motion the tinted bars stay, so the

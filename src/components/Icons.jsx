@@ -10,6 +10,20 @@ export function ArrowDown({ className = '' }) {
   return <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.25v9.5M3.75 8.5 8 12.75l4.25-4.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }
 
+/* Used only where a link leaves this document for another page of the site —
+   which on a static two-document build means the 404 page pointing home. The
+   other three arrows are already spoken for: ArrowUpRight leaves the site
+   entirely, ArrowUp and ArrowDown move within one page. */
+export function ArrowLeft({ className = '' }) {
+  return <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M12.75 8h-9.5M7.5 3.75 3.25 8l4.25 4.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+}
+
+/* A pinned marker, used for the section rows on the 404 page — they are
+   positions on the homepage rather than pages of their own. */
+export function Anchor({ className = '' }) {
+  return <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 5.6v7.9M8 5.6a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6ZM3 8.6a5 5 0 0 0 10 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+}
+
 /* The brand mark: three stacked layers widening downward — the sapin-sapin
    cake the project is named for. Layer fills come from the theme tokens via
    CSS classes so the mark follows light/dark like everything else. */
