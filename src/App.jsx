@@ -343,7 +343,7 @@ function Nav({ theme, onToggleTheme }) {
     className="site-header sticky top-0 z-50 mx-auto max-w-[1440px] px-4 pt-3 sm:px-6 lg:px-9"
   >
     <nav className="nav-shell flex min-h-[60px] items-center justify-between gap-2 rounded-2xl px-3.5 sm:px-5" aria-label="Main navigation">
-      <a href="#top" onClick={(event) => { event.preventDefault(); closeMenus(); scrollToTop(); history.replaceState(null, '', '#top') }} className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
+      <a href="#top" onClick={(event) => { event.preventDefault(); closeMenus(); scrollToTop() }} className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
         <Mark className="h-[1.85rem] w-[2rem]" />
         <span className="text-[.9rem] font-semibold tracking-[-.045em] whitespace-nowrap">SapinSapin <span className="font-normal text-ink/63">AI</span></span>
       </a>
@@ -831,9 +831,18 @@ function App() {
 
   // Anchor targets are rendered by React, so a #ref-… deep link has nothing to
   // scroll to at load time. Re-run the jump once the tree is on the page.
+  // #top is a special case: the browser's own native anchor-scroll (which
+  // fires on load before this even runs) lands the Hero's top edge at the
+  // viewport top, hiding it behind the sticky header — the same bug the
+  // brand-logo click works around. useLayoutEffect corrects it before paint
+  // so a manual refresh on #top doesn't flash the wrong position first.
+  useLayoutEffect(() => {
+    if (window.location.hash === '#top') { window.scrollTo(0, 0); return }
+  }, [])
+
   useEffect(() => {
     const { hash } = window.location
-    if (!hash || hash.length < 2) return
+    if (!hash || hash.length < 2 || hash === '#top') return
     const target = document.getElementById(decodeURIComponent(hash.slice(1)))
     if (!target) return
     requestAnimationFrame(() => target.scrollIntoView({ block: 'center' }))
