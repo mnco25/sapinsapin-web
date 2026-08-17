@@ -312,6 +312,21 @@ export function listClips(language, options = {}) {
   )
 }
 
+// The voice list is the one piece of baked state that can silently invalidate a
+// request: offering a voice the Space has since renamed produces "is not in the
+// list of choices" on submit, after the visitor has already waited. Refreshing
+// from /lambda_1 lets the page correct itself between deploys.
+export function listVoices(language, options = {}) {
+  return schedule(
+    () =>
+      withStaleSessionRetry(async () => {
+        const { choices } = await withPrepared('voices', language, async () => null, options)
+        return choices ?? manifestLanguages.find((entry) => entry.name === language)?.voices ?? []
+      }),
+    options,
+  )
+}
+
 export function loadSample(language, label, options = {}) {
   return schedule(
     () =>

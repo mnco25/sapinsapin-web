@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { languages, targetVoices } from '../data/spaceManifest'
 import { AudioError, canRecord, extractPeaks, formatBytes, formatSeconds, startRecording, toSpeechWav } from '../lib/audio'
-import { convert, fetchAudioBlob, isWarm, listClips, loadSample, synthesize, transcribe, uploadBlob } from '../lib/spaceClient'
+import { convert, fetchAudioBlob, isWarm, listClips, listVoices, loadSample, synthesize, transcribe, uploadBlob } from '../lib/spaceClient'
 
 // The Hub's model ids use ISO codes that do not always match the speaker
 // prefixes in the corpus — Bikol speakers are BIK_*, but the model is …-bcl —
-// so the mapping is spelled out rather than derived.
+// so the mapping is spelled out rather than derived. A language the Space gains
+// before the next sync resolves to null, and the badge is dropped rather than
+// printing an id ending in "undefined".
 const modelCode = {
   Bikol: 'bcl',
   Cebuano: 'ceb',
@@ -26,7 +28,7 @@ const capabilities = [
     tab: 'Text to speech',
     title: 'Type a sentence, hear it spoken',
     copy: 'One of the corpus speakers reads your text back in the language you pick.',
-    model: (language) => `speecht5_tts-pld-${modelCode[language]}`,
+    model: (language) => (modelCode[language] ? `speecht5_tts-pld-${modelCode[language]}` : null),
     resultLabel: 'Synthesized speech',
     warmKind: 'tts',
     verb: 'Synthesizing',
@@ -39,7 +41,7 @@ const capabilities = [
     tab: 'Speech to text',
     title: 'Turn speech into text',
     copy: 'Play a corpus clip, upload a file, or record yourself, and read it back.',
-    model: (language) => `whisper-small-pld-${modelCode[language]}`,
+    model: (language) => (modelCode[language] ? `whisper-small-pld-${modelCode[language]}` : null),
     resultLabel: 'Model transcription',
     warmKind: 'asr',
     verb: 'Transcribing',
@@ -119,6 +121,9 @@ function statusCopy({ phase, position, elapsed, job }) {
 }
 
 const activePhases = new Set(['connecting', 'uploading', 'queued', 'running'])
+
+const clamp = (text, limit = 180) =>
+  typeof text === 'string' && text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text
 
 /**
  * One capability's request lifecycle.
@@ -213,6 +218,39 @@ function useObjectUrl(blob) {
   return url
 }
 
+/**
+ * A dropdown's options: the baked list first, replaced by the Space's own once
+ * the visitor reaches for the control.
+ *
+ * The manifest renders instantly and is usually right, but it is a snapshot from
+ * the last deploy — if the Space gains or renames a voice, submitting a stale one
+ * fails only after the visitor has waited for it. Confirming lazily keeps the
+ * first paint free of requests while letting the page correct itself.
+ *
+ * Responses are matched against the language that is current when they land, so
+ * switching away mid-flight cannot drop one language's options into another's
+ * dropdown.
+ */
+function useLiveOptions(language, fallback, fetcher) {
+  const [options, setOptions] = useState(fallback)
+  const [busy, setBusy] = useState(false)
+  const requestedFor = useRef(null)
+
+  useEffect(() => { setOptions(fallback) }, [fallback])
+
+  const refresh = useCallback(() => {
+    if (requestedFor.current === language) return
+    requestedFor.current = language
+    setBusy(true)
+    fetcher(language)
+      .then((next) => { if (next?.length && requestedFor.current === language) setOptions(next) })
+      .catch(() => { if (requestedFor.current === language) requestedFor.current = null })
+      .finally(() => { if (requestedFor.current === language) setBusy(false) })
+  }, [fetcher, language])
+
+  return [options, refresh, busy]
+}
+
 function usePeaks(blob) {
   const [peaks, setPeaks] = useState(null)
   useEffect(() => {
@@ -292,8 +330,29 @@ function AudioPlayer({ blob, label, tone = 'ube' }) {
         )}
       </button>
 
-      {/* Presentational: the <audio> element above is the accessible control. */}
-      <div className="demo-wave" onClick={seek} aria-hidden="true">
+      {/* A real slider, not decoration. The <audio> element is display:none, so
+          without this there would be no way to scrub except by pointing at
+          pixels — the play button alone leaves keyboard users stuck at 0:00. */}
+      <div
+        className="demo-wave"
+        role="slider"
+        tabIndex={0}
+        aria-label={`Seek within ${label}`}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(duration) || 0}
+        aria-valuenow={Math.round(time)}
+        aria-valuetext={`${formatSeconds(time)} of ${formatSeconds(duration)}`}
+        onClick={seek}
+        onKeyDown={(event) => {
+          const audio = audioRef.current
+          if (!audio || !duration) return
+          const jump = { ArrowRight: 2, ArrowLeft: -2, ArrowUp: 2, ArrowDown: -2 }[event.key]
+          if (jump === undefined && event.key !== 'Home' && event.key !== 'End') return
+          event.preventDefault()
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? duration : audio.currentTime + jump
+          audio.currentTime = Math.min(duration, Math.max(0, next))
+        }}
+      >
         <svg viewBox="0 0 96 32" preserveAspectRatio="none">
           {bars.map((peak, index) => {
             const height = Math.max(1.5, peak * 30)
@@ -329,9 +388,12 @@ function Skeleton({ variant }) {
 }
 
 function StatusLine({ phase, position, elapsed, job, error, onCancel, onRetry }) {
+  // Error text comes from the Space, so it is clamped before display: Gradio
+  // validation messages can run to hundreds of characters and would otherwise
+  // push the controls off screen.
   const message =
     phase === 'error'
-      ? error?.message ?? 'Something went wrong.'
+      ? clamp(error?.message) ?? 'Something went wrong.'
       : phase === 'cancelled'
         ? 'Cancelled.'
         : statusCopy({ phase, position, elapsed, job })
@@ -387,34 +449,16 @@ const sources = [
 function AudioSource({ language, languageLabel, value, onChange, disabled, step }) {
   const [mode, setMode] = useState('clip')
   const manifestClips = useMemo(() => languages.find((entry) => entry.name === language)?.clips ?? [], [language])
-  const [clips, setClips] = useState(manifestClips)
-  const [clipsBusy, setClipsBusy] = useState(false)
+  const [clips, refreshClips, clipsBusy] = useLiveOptions(language, manifestClips, listClips)
   const [note, setNote] = useState(null)
   const [pendingLong, setPendingLong] = useState(null)
   const [loadingClip, setLoadingClip] = useState(false)
   const [recorder, setRecorder] = useState(null)
   const [recordSeconds, setRecordSeconds] = useState(0)
-  const refreshedFor = useRef(null)
   const recordable = useMemo(canRecord, [])
   const fieldId = useId()
 
   const offered = sources.filter((source) => source.id !== 'record' || recordable)
-
-  useEffect(() => { setClips(manifestClips) }, [manifestClips])
-
-  // The baked list renders instantly and is usually right; this only confirms it
-  // against the Space, and only once the visitor reaches for the dropdown.
-  // Doing it on mount instead would put a request into a one-at-a-time queue for
-  // every page view, delaying whatever the visitor actually asked for.
-  const refreshClips = useCallback(() => {
-    if (refreshedFor.current === language) return
-    refreshedFor.current = language
-    setClipsBusy(true)
-    listClips(language)
-      .then((next) => { if (next?.length) setClips(next) })
-      .catch(() => { refreshedFor.current = null })
-      .finally(() => setClipsBusy(false))
-  }, [language])
 
   useEffect(() => {
     onChange(null)
@@ -591,7 +635,7 @@ function Stage({ capability, language, children, status, live, busy }) {
     <div className="demo-stage" ref={ref}>
       <div className="demo-stage-head">
         <span className="demo-stage-label">{capability.resultLabel}</span>
-        <code className="demo-stage-model">{capability.model(language)}</code>
+        {capability.model(language) && <code className="demo-stage-model">{capability.model(language)}</code>}
       </div>
       <div className="demo-stage-body">{children}</div>
       {status}
@@ -629,17 +673,23 @@ function useAnnouncement(phase, error) {
 /* ------------------------------------------------------------------- panels */
 
 function SynthesizePanel({ capability, language, languageLabel, languageField }) {
-  const voices = useMemo(() => languages.find((entry) => entry.name === language)?.voices ?? [], [language])
-  const [voice, setVoice] = useState(voices[0] ?? '')
+  const manifestVoices = useMemo(() => languages.find((entry) => entry.name === language)?.voices ?? [], [language])
+  const [voices, refreshVoices] = useLiveOptions(language, manifestVoices, listVoices)
+  const [voice, setVoice] = useState(manifestVoices[0] ?? '')
   const [text, setText] = useState(sampleText[language] ?? '')
   const job = useJob(capability)
   const live = useAnnouncement(job.phase, job.error)
   const id = useId()
 
   useEffect(() => {
-    setVoice(voices[0] ?? '')
     setText(sampleText[language] ?? '')
-  }, [language, voices])
+  }, [language])
+
+  // Follows the list rather than the language, so a refresh that finds the
+  // selected voice gone lands on a real one instead of failing at submit.
+  useEffect(() => {
+    if (voices.length && !voices.includes(voice)) setVoice(voices[0])
+  }, [voices, voice])
 
   const run = useCallback(() => {
     const value = text.trim()
@@ -659,10 +709,10 @@ function SynthesizePanel({ capability, language, languageLabel, languageField })
       <div className="demo-inputs">
         {languageField}
         <Field step="2" label="What should it say?" htmlFor={`${id}-text`}>
-          <textarea id={`${id}-text`} rows={3} value={text} maxLength={220} onChange={(event) => setText(event.target.value)} placeholder={sampleText[language]} />
+          <textarea id={`${id}-text`} rows={3} value={text} maxLength={220} onChange={(event) => setText(event.target.value)} placeholder={sampleText[language] ?? 'Type a sentence in this language'} />
         </Field>
         <Field step="3" label="Voice" htmlFor={`${id}-voice`}>
-          <select id={`${id}-voice`} value={voice} onChange={(event) => setVoice(event.target.value)}>
+          <select id={`${id}-voice`} value={voice} onFocus={refreshVoices} onChange={(event) => setVoice(event.target.value)}>
             {voices.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </Field>
@@ -720,7 +770,7 @@ function TranscribePanel({ capability, language, languageLabel, languageField })
         {languageField}
         <AudioSource step="2" language={language} languageLabel={languageLabel} value={audio} onChange={setAudio} disabled={job.busy} />
         <Field step="3" label="Expected transcript" hint="Optional — filled in for you when you pick a corpus clip." htmlFor={`${id}-ref`}>
-          <input id={`${id}-ref`} type="text" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="What was actually said" />
+          <input id={`${id}-ref`} type="text" maxLength={300} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="What was actually said" />
         </Field>
         <button type="button" className="demo-run" onClick={run} disabled={job.busy || !audio}>
           {job.busy ? 'Working…' : capability.action}

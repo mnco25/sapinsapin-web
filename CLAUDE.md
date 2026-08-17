@@ -138,6 +138,30 @@ Space's own API page is wrong about the third.
 `choices` outrank it at call time, so drift there degrades to a stale first paint rather than
 a failed call. `sync-space.mjs` failing is the signal that the Space's shape changed.
 
+#### What updates on its own, and what does not
+
+The demo is only partly self-healing, and the split is deliberate — knowing which half a
+change falls in tells you whether it needs a deploy.
+
+| If the Space changes… | The site… |
+|---|---|
+| a **clip** is added, renamed or removed | corrects itself — refreshed from `/lambda` when the dropdown is focused |
+| a **voice** is added, renamed or removed | corrects itself — refreshed from `/lambda_1`, and a selection that no longer exists falls back to a real one instead of failing at submit |
+| an **output shape** changes | keeps working — every result is read positionally through `pick()` with fallbacks |
+| the Space **restarts** and forgets the session | recovers — one silent retry on a fresh session |
+| a **language** is added | ignores it until `npm run sync`; the model badge is dropped rather than printed as `…-undefined` |
+| a **language** is removed | still offers it, and that language's requests fail — needs a sync |
+| an **endpoint** is renamed | breaks entirely — needs code, not a sync |
+| the **target-voice** list changes | needs a sync (it is only read from the config, never refreshed) |
+
+The lazy refreshes fire on focus rather than on mount on purpose: requests are serialised
+one at a time, so confirming lists eagerly would put two round trips ahead of whatever the
+visitor actually pressed.
+
+Run `npm run sync` before any deploy and the first four rows never come up. If the Space is
+asleep at build time the sync fails loudly — the committed manifest is still on disk, so
+`npm run build` alone will still produce a working site with slightly stale lists.
+
 The console is lazy-loaded and gated on approaching the viewport, so it stays off the
 first-paint path and a visitor who never scrolls never contacts the Space at all. Feedback
 (`/_fn*`) is deliberately left unwired — anonymous landing-page traffic would pollute the

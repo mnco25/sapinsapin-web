@@ -28,10 +28,17 @@ export const formatSeconds = (seconds) => {
   return whole >= 60 ? `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, '0')}s` : `${whole}s`
 }
 
+// One context for every decode on the page. Browsers cap how many an origin may
+// hold open (Chrome allows about six) and a demo people re-run repeatedly would
+// otherwise reach that ceiling and start throwing. Decoding does not need a
+// running context, so leaving this suspended costs nothing.
+let sharedContext = null
+
 function audioContext() {
   const Ctor = window.AudioContext ?? window.webkitAudioContext
   if (!Ctor) throw new AudioError('This browser cannot decode audio.', { kind: 'unsupported' })
-  return new Ctor()
+  if (!sharedContext || sharedContext.state === 'closed') sharedContext = new Ctor()
+  return sharedContext
 }
 
 // Safari only grew the promise form of decodeAudioData recently, and still
@@ -141,13 +148,7 @@ export async function toSpeechWav(input, { maxSeconds = MAX_SECONDS, trim = fals
     })
   }
 
-  const context = audioContext()
-  let decoded
-  try {
-    decoded = await decode(context, await input.arrayBuffer())
-  } finally {
-    context.close?.()
-  }
+  const decoded = await decode(audioContext(), await input.arrayBuffer())
 
   const seconds = decoded.duration
   if (!Number.isFinite(seconds) || seconds < 0.15) {
@@ -178,13 +179,7 @@ export async function toSpeechWav(input, { maxSeconds = MAX_SECONDS, trim = fals
  * keeps a softly-recorded speaker legible instead of drawing a flat line.
  */
 export async function extractPeaks(blob, buckets = 96) {
-  const context = audioContext()
-  let decoded
-  try {
-    decoded = await decode(context, await blob.arrayBuffer())
-  } finally {
-    context.close?.()
-  }
+  const decoded = await decode(audioContext(), await blob.arrayBuffer())
 
   const mono = toMono(decoded)
   const size = Math.max(1, Math.floor(mono.length / buckets))

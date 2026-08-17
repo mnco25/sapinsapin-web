@@ -63,6 +63,13 @@ const references = [
 
 const referenceIndex = Object.fromEntries(references.map((reference, index) => [reference.id, { ...reference, number: index + 1 }]))
 
+/* Serialises structured data for a <script> tag. The escaping is the point:
+   these schemas carry dataset titles and descriptions synced from the Hub, and
+   a "</script>" in any of them would otherwise close the tag early and let the
+   rest of the string be parsed as markup. Escaping "<" is enough, and leaves
+   the JSON valid. */
+const jsonLd = (schema) => JSON.stringify(schema).replace(/</g, '\\u003c')
+
 /* An inline citation marker. Pointer users get a preview card so they never
    lose their place; everyone else follows the link down to the reference list. */
 function Cite({ source }) {
@@ -912,8 +919,8 @@ function App() {
     <main aria-label="SapinSapin AI — Open foundations for Philippine-language AI"><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
     <Footer />
     <BackToTop />
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetsSchema) }} />
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(datasetsSchema) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqSchema) }} />
   </>
 }
 
