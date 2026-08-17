@@ -6,9 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The public landing page for SapinSapin AI (https://huggingface.co/sapinsapin), an open
 initiative building corpora, benchmarks, and models for Philippine-language AI. It is a
-**static React + Vite + Tailwind build with no backend, no database, and no runtime data
-fetching** — every figure the page shows is synced from the Hugging Face Hub at build time.
+**static React + Vite + Tailwind build with no backend and no database** — every figure the
+page shows is synced from the Hugging Face Hub at build time.
 Live at https://sapinsapin-web.vercel.app.
+
+The one exception is the live speech demo in the `#demo` section, which calls the
+`sapinsapin/halohalo-dashboard` Gradio Space from the browser. It is still the only runtime
+fetching on the page; see "The live demo" below for why it is allowed to do that when the
+catalog is not.
 
 ## Commands
 
@@ -17,7 +22,9 @@ npm install
 npm run dev            # Vite dev server (default port 5173)
 npm run build           # Static bundle → dist/
 npm run preview         # Serve the built bundle locally
-npm run sync             # Refresh dataset/model figures from the Hub API → src/data/hubSnapshot.js
+npm run sync             # Both syncs below, in order
+npm run sync:catalog     # Dataset/model figures from the Hub API → src/data/hubSnapshot.js
+npm run sync:space       # Demo language/voice/clip lists from the Space → src/data/spaceManifest.js
 npm run prepare:map      # Regenerate hero map geometry from public boundary data
 npm run prepare:icons    # Rasterise the brand mark to PNG favicons
 ```
@@ -25,7 +32,8 @@ npm run prepare:icons    # Rasterise the brand mark to PNG favicons
 There is no test suite and no lint script configured in `package.json`.
 
 **Always run `npm run sync` before a deploy build.** It rewrites `src/data/hubSnapshot.js`,
-the single source for every count, download figure, task label, and date on the page:
+the single source for every count, download figure, task label, and date on the page, and
+`src/data/spaceManifest.js`, the demo's language/voice/clip lists:
 
 ```bash
 npm run sync && npm run build
@@ -63,17 +71,23 @@ scripts/sync-catalog.mjs   →   src/data/hubSnapshot.js   (generated, do not ed
 ```
 scripts/
   sync-catalog.mjs        Hub API → hubSnapshot.js (run before deploy)
+  sync-space.mjs           Space config → spaceManifest.js (run before deploy)
   prepare-map.mjs          GeoJSON → simplified SVG paths + projected anchors
   prepare-icons.mjs        Brand mark → apple-touch-icon.png, favicon-32.png
 src/
   components/
     Icons.jsx              Inline SVG icon set and the brand mark
     PhilippinesMap.jsx      Hero map, bearing dial, language readout
+    SpeechConsole.jsx       The live demo: all three capabilities, lazy-loaded
+  lib/
+    spaceClient.js          Every call to the Space — queue, prep, errors
+    audio.js                 Decode/resample/encode to 16 kHz mono WAV
   data/
     catalog.js              Editorial copy, merged with the live snapshot
     hubSnapshot.js           Generated — do not edit by hand
     modelNotes.js            Plain-language descriptions for model hover cards
     philippinesMapPaths.js   Generated — do not edit by hand
+    spaceManifest.js         Generated — do not edit by hand
   App.jsx                    All page sections, nav, theming, citations (single file)
   index.css                  Design tokens, both themes, component styles
 ```
@@ -83,6 +97,51 @@ src/
 `PartnersAndFaq`, `Footer`, plus shared helpers like `Cite`, `Reveal`, `CountUp`,
 `ThemeToggle`, `Nav`) rather than being split into per-file components. Follow that
 convention rather than introducing a new components directory for section content.
+`PhilippinesMap.jsx` and `SpeechConsole.jsx` are the exceptions and not a precedent for
+splitting sections: both are self-contained interactive widgets, and the prose around them
+still lives in `Hero()` and `Demo()`.
+
+### The live demo
+
+`SpeechConsole.jsx` runs the org's speech models — transcribe, synthesize, convert voice —
+against the `sapinsapin/halohalo-dashboard` Space, in the browser, with no proxy. Four facts
+about that Space drive the whole design. All four were measured, not read off the docs; the
+Space's own API page is wrong about the third.
+
+1. **It permits any origin.** The Space reflects whatever `Origin` asks, on `/config`,
+   `/gradio_api/*`, the upload route and the file route. This is the opposite of the Hub API
+   (which pins the header to huggingface.co and forces the build-time catalog sync), so the
+   demo may call it directly while the catalog may not. Different reason, different answer —
+   don't "fix" one to match the other.
+
+2. **It cannot do concurrency.** Two requests in flight at once leave it waiting on a session
+   it never finishes, and a few of those make it stop answering for about a minute.
+   `spaceClient.js` therefore runs a single FIFO queue with exactly one request in flight;
+   waiting jobs report their place rather than appearing stalled. Never call it in parallel,
+   including from build scripts.
+
+3. **Dropdown values are validated per session, against a cursor.** Gradio keeps one live
+   choice list per dropdown per session, so `/synthesize` rejects a Bikol voice unless
+   `/lambda_1(Bikol)` ran in that session first — and preparing Bikol, then Waray, makes
+   Bikol invalid again. Preparation is a cursor, not a cache: `withPrepared` re-runs it
+   whenever the cursor has moved, inside the same queue slot as the call it protects.
+   `/transcribe` and `/convert` need none of this; their dropdowns hold every option already.
+
+4. **It runs on free cpu-basic.** Roughly 8–20s warm, and the first use of a language loads a
+   ~1 GB model first. The UI states this up front, holds the result's height from the moment
+   a job starts, and only blames a model download once a request has outlasted any warm one
+   — warmth is tracked in memory, so a fresh page load cannot tell a cold model from a busy
+   Space. Voice conversion is one language-independent model, so one run warms it for every
+   language.
+
+`spaceManifest.js` exists only so the controls can render before any request; the Space's own
+`choices` outrank it at call time, so drift there degrades to a stale first paint rather than
+a failed call. `sync-space.mjs` failing is the signal that the Space's shape changed.
+
+The console is lazy-loaded and gated on approaching the viewport, so it stays off the
+first-paint path and a visitor who never scrolls never contacts the Space at all. Feedback
+(`/_fn*`) is deliberately left unwired — anonymous landing-page traffic would pollute the
+Space's rating store; the "Open in the Space" link is the path for people who want to rate.
 
 ### Theming
 

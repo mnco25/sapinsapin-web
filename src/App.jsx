@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import NumberFlow from '@number-flow/react'
 import { datasets, models, catalogSnapshot, totals } from './data/catalog'
-import { ArrowUp, ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
+import { ArrowDown, ArrowUp, ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
 import PhilippinesMap from './components/PhilippinesMap'
 import { describeModel } from './data/modelNotes'
+import { languages as demoLanguages } from './data/spaceManifest'
 
 const hub = 'https://huggingface.co/sapinsapin'
 const github = 'https://github.com/sapinsapin'
@@ -221,22 +222,7 @@ function Nav({ theme, onToggleTheme }) {
   const activeId = useActiveSection()
   const linksRef = useRef(null)
   const menuRef = useRef(null)
-  const headerRef = useRef(null)
   const [hidden, setHidden] = useState(false)
-
-  // The frosted band behind the header (.top-scrim) has to stop exactly at
-  // the pill's bottom edge — any further and it blurs page content that has
-  // nothing to do with the nav. Measuring the real box beats a breakpoint
-  // constant: it stays correct even if the pill's content ever wraps.
-  useEffect(() => {
-    const header = headerRef.current
-    if (!header || typeof ResizeObserver === 'undefined') return undefined
-    const setHeight = () => document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`)
-    setHeight()
-    const observer = new ResizeObserver(setHeight)
-    observer.observe(header)
-    return () => observer.disconnect()
-  }, [])
 
   // Slide the indicator pill under whichever link is active.
   const positionPill = useCallback(() => {
@@ -312,13 +298,6 @@ function Nav({ theme, onToggleTheme }) {
     if (menuRef.current) menuRef.current.open = false
   }
 
-  // .top-scrim lives outside <Nav> as a sibling in App(), so it can't read
-  // this component's `hidden` state directly — mirror it onto the root
-  // element instead.
-  useEffect(() => {
-    document.documentElement.dataset.navHidden = String(hidden)
-  }, [hidden])
-
   // Dismiss the mobile menu on outside click or Escape.
   useEffect(() => {
     const close = (event) => {
@@ -338,11 +317,13 @@ function Nav({ theme, onToggleTheme }) {
   ))
 
   return <header
-    ref={headerRef}
     data-hidden={hidden}
     className="site-header sticky top-0 z-50 mx-auto max-w-[1440px] px-4 pt-3 sm:px-6 lg:px-9"
   >
-    <nav className="nav-shell flex min-h-[60px] items-center justify-between gap-2 rounded-2xl px-3.5 sm:px-5" aria-label="Main navigation">
+    {/* Height, inline padding, radius, and width all morph between the
+        unscrolled bar and the scrolled island, so they live in .nav-shell
+        rather than as utilities here — see index.css. */}
+    <nav className="nav-shell flex items-center justify-between gap-2" aria-label="Main navigation">
       <a href="#top" onClick={(event) => { event.preventDefault(); closeMenus(); scrollToTop() }} className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
         <Mark className="h-[1.85rem] w-[2rem]" />
         <span className="text-[.9rem] font-semibold tracking-[-.045em] whitespace-nowrap">SapinSapin <span className="font-normal text-ink/63">AI</span></span>
@@ -368,8 +349,8 @@ function Nav({ theme, onToggleTheme }) {
 }
 
 function Hero() {
-  return <section id="top" className="relative overflow-hidden px-4 pb-0 pt-5 sm:px-6 sm:pt-7 lg:px-9">
-    <div className="hero-frame page-shell relative grid items-center gap-8 overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[1fr_.95fr] lg:gap-12 lg:px-16">
+  return <section id="top" className="relative overflow-hidden px-4 pb-0 pt-3 sm:px-6 sm:pt-4 lg:px-9">
+    <div className="hero-frame page-shell relative grid items-center gap-8 overflow-hidden rounded-[2rem] px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[1fr_.95fr] lg:gap-12 lg:px-16">
       <div className="hero-wash" aria-hidden="true" />
       <div className="relative z-10 max-w-2xl">
         <div className="hero-badge hero-rise hero-rise-1"><span className="hero-pulse" aria-hidden="true" /> Open research infrastructure</div>
@@ -377,7 +358,10 @@ function Hero() {
         <p className="hero-rise hero-rise-3 mt-6 max-w-xl text-[1rem] leading-7 text-ink/72 sm:text-lg sm:leading-8 [text-wrap:pretty]">SapinSapin AI builds open speech and language foundations so Philippine AI can be made with — and for — the people who speak it.</p>
         <div className="hero-rise hero-rise-3 mt-8 flex flex-wrap gap-3">
           <a href="#work" className="btn btn-primary">Explore the collections <ArrowUpRight className="h-4 w-4" /></a>
-          <ExternalLink href={space} className="btn btn-ghost" label="Open the halohalo live demo on Hugging Face">Try the live demo <ArrowUpRight className="h-4 w-4" /></ExternalLink>
+          {/* Points at the demo on this page rather than the Space it used to
+              open. The down arrow is the page's mark for an in-page jump; the
+              Space is still one click away from inside the demo itself. */}
+          <a href="#demo" className="btn btn-ghost">Try the live demo <ArrowDown className="h-4 w-4" /></a>
         </div>
         <div className="hero-evidence hero-rise hero-rise-4 mt-10">
           <span><b><CountUp value={totals.datasets} format={{ minimumIntegerDigits: 2 }} /></b> data collections</span><span><b><CountUp value={totals.models} /></b> public models</span><span><b><CountUp value={10} /></b> language layers</span>
@@ -390,56 +374,96 @@ function Hero() {
 
 /* The halohalo Space is the fastest way to understand what the project does,
    so it gets a section of its own rather than a footer link. */
-function Demo() {
-  const capabilities = [
-    {
-      kicker: 'Transcribe',
-      title: 'Speech into text',
-      copy: 'Record, upload, or play a preloaded clip and have it transcribed in the language it was spoken in.',
-      model: 'whisper-small-pld-<lang>',
-    },
-    {
-      kicker: 'Synthesize',
-      title: 'Text into speech',
-      copy: 'Type a sentence and hear it read aloud by one of the recorded speakers for that language.',
-      model: 'speecht5_tts-pld-<lang>',
-    },
-    {
-      kicker: 'Convert voice',
-      title: 'One voice into another',
-      copy: 'Speak into the microphone and hear the same words in a different speaker’s voice.',
-      model: 'speecht5_vc-pld',
-    },
-  ]
+// The console is the only part of the page that fetches at runtime, and it sits
+// below the fold. Splitting it out keeps it off the first-paint path that
+// d89c6ab went to the trouble of clearing, and gating it on approach means a
+// visitor who never scrolls here never touches the Space at all.
+const SpeechConsole = lazy(() => import('./components/SpeechConsole'))
 
+function DeferredConsole() {
+  const ref = useRef(null)
+  const [near, setNear] = useState(false)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return undefined
+    if (!('IntersectionObserver' in window)) { setNear(true); return undefined }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setNear(true)
+    }, { rootMargin: '400px 0px' })
+    observer.observe(node)
+
+    // Two more ways in. The observer is the precise trigger, but this is the
+    // page's headline feature — if it ever failed to fire, the demo would
+    // simply never appear.
+    //
+    // The hash check is not belt-and-braces, it is load-bearing: the hero's
+    // "Try the live demo" button and the nav both jump straight to #demo, and
+    // an anchor jump does not reliably emit a scroll event, so those two links
+    // could otherwise land someone on an empty placeholder.
+    const onScroll = () => setNear(true)
+    const onHash = () => { if (window.location.hash === '#demo') setNear(true) }
+    onHash()
+    window.addEventListener('scroll', onScroll, { once: true, passive: true })
+    window.addEventListener('hashchange', onHash)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('hashchange', onHash)
+    }
+  }, [])
+
+  // The placeholder holds the console's own height so arriving at the section
+  // does not shove the rest of the page down as the chunk lands.
+  const placeholder = <div ref={ref} className="demo-placeholder" aria-hidden="true" />
+  if (!near) return placeholder
+  return <Suspense fallback={placeholder}><SpeechConsole /></Suspense>
+}
+
+function Demo() {
   return <section id="demo" className="section-shell scroll-mt-24 pt-28 sm:pt-36">
     <div className="demo-panel">
       <div className="demo-intro">
         <div>
           <Eyebrow>Try it in the browser</Eyebrow>
           <h2 className="mt-5 font-display text-[clamp(2.25rem,4vw,3.6rem)] font-medium leading-[1.02] tracking-[-.055em] text-ink">Hear the models <em className="text-ube">work.</em></h2>
-          <p className="mt-6 max-w-xl text-[1.03rem] leading-7 text-ink/70">The halohalo Space runs the org’s speech models live for ten Philippine languages — no install, no account. It also mirrors the full dataset and model catalog straight from the Hub.</p>
+          <p className="mt-6 max-w-xl text-[1.03rem] leading-7 text-ink/70">These run the org’s own speech models for ten Philippine languages — no install, no account. Everything below calls the halohalo Space directly from this page.</p>
+          {/* Said once, up front, rather than discovered at second twenty. The
+              Space is on free shared CPU, and pretending otherwise would make
+              a working demo look broken. */}
+          <p className="mt-4 max-w-xl text-sm leading-6 text-ink/60">They run on free shared CPU with no GPU, so a request takes roughly ten to twenty seconds — and the first one in a language waits on a ~1&nbsp;GB model download. Requests are handled one at a time.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ExternalLink href={space} className="btn btn-primary" label="Open the halohalo Space on Hugging Face">Open the live demo <ArrowUpRight className="h-4 w-4" /></ExternalLink>
-            <a href="#models" className="btn btn-ghost">Browse the models <span aria-hidden="true">↓</span></a>
+            <ExternalLink href={space} className="btn btn-ghost" label="Open the halohalo Space on Hugging Face">Open in the Space <ArrowUpRight className="h-4 w-4" /></ExternalLink>
+            <a href="#models" className="btn btn-ghost">Browse the models <ArrowDown className="h-4 w-4" /></a>
           </div>
         </div>
-        <ul className="demo-langs" aria-label="Languages covered by the demo">
-          {['Bikol', 'Cebuano', 'Filipino', 'Hiligaynon', 'Ilocano', 'Kapampangan', 'Pangasinan', 'Tausug', 'Waray', 'Philippine English'].map((language) => (
-            <li key={language}>{language}</li>
-          ))}
-        </ul>
+        {/* Counts come from the generated manifest rather than being written
+            here, so they cannot drift from the languages the demo can serve. */}
+        <aside className="demo-spec" aria-label="What the demo runs">
+          <p className="demo-spec-label">Behind this demo</p>
+          <dl className="demo-spec-list">
+            {[
+              [demoLanguages.length, 'Speech recognition', 'whisper-small-pld-*'],
+              [demoLanguages.length, 'Speech synthesis', 'speecht5_tts-pld-*'],
+              [1, 'Voice conversion', 'speecht5_vc-pld'],
+            ].map(([count, name, id]) => (
+              <div key={name} className="demo-spec-row">
+                <dt>
+                  <span className="demo-spec-count">{count}</span>
+                  <span className="demo-spec-name">{name}</span>
+                </dt>
+                <dd><code>{id}</code></dd>
+              </div>
+            ))}
+          </dl>
+          <p className="demo-spec-note">
+            Finetuned on the Philippine Language Dataset. Clips and voice presets come from the corpus collected by the UP&nbsp;Diliman Digital Signal Processing Laboratory.
+          </p>
+        </aside>
       </div>
-      <Reveal className="demo-grid">
-        {capabilities.map(({ kicker, title, copy, model }) => (
-          <article key={kicker} className="demo-card">
-            <p className="demo-kicker">{kicker}</p>
-            <h3 className="mt-3 text-lg font-semibold tracking-[-.035em] text-ink">{title}</h3>
-            <p className="mt-2 text-sm leading-6 text-ink/70">{copy}</p>
-            <code className="demo-model">{model}</code>
-          </article>
-        ))}
-      </Reveal>
+      <DeferredConsole />
     </div>
   </section>
 }
@@ -689,7 +713,7 @@ function Models() {
         <div className="model-more">
           <button type="button" onClick={handleToggleDisplay} aria-expanded={isFullyExpanded}>
             {buttonText}
-            <span aria-hidden="true">{isFullyExpanded ? '↑' : '↓'}</span>
+            {isFullyExpanded ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
           </button>
           <p>Showing {shown.length} of {visible.length}{filter === 'All models' ? '' : ` · ${filter}`}</p>
         </div>
@@ -852,10 +876,6 @@ function App() {
 
   return <>
     <a href="#work" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">Skip to content</a>
-    {/* Full-bleed frosted band behind the header. The nav pill only blurs its
-        own footprint, so content used to scroll past sharply in the margins
-        beside and above it; this fades the whole top strip instead. */}
-    <div className="top-scrim" aria-hidden="true" />
     <Nav theme={theme} onToggleTheme={toggleTheme} />
     <main><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
     <Footer />
