@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,14 +16,24 @@
         document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0D0C0B' : '#FBF7F0'
       })()
     </script>
+
+    <!-- ===== Favicons ===== -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="description" content="SapinSapin AI builds open speech and language foundations for Philippine-language AI." />
-    <meta name="robots" content="index, follow" />
+
+    <!-- ===== SEO Core Meta ===== -->
+    <title>SapinSapin AI — Open-Source Speech & Language AI for Philippine Languages</title>
+    <meta name="description" content="SapinSapin AI builds open-source speech recognition, text-to-speech, and language models for 10+ Philippine languages including Filipino, Cebuano, Ilocano, and Hiligaynon. Explore 500+ hours of verified speech data, 28 public models, and open datasets built for researchers and developers." />
+    <meta name="keywords" content="Philippine AI, Filipino speech recognition, Philippine language dataset, open source AI Philippines, Tagalog NLP, Cebuano speech model, Filipino text to speech, Philippine language models, low-resource language AI, Ilocano AI, Hiligaynon dataset, SapinSapin AI" />
+    <meta name="author" content="SapinSapin AI" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://sapinsapin.ai/" />
+
+    <!-- ===== Font Loading ===== -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://huggingface.co" />
     <!-- Fonts load without blocking first paint: the sheet is fetched at high
          priority via preload, then swapped in through the media trick once it
          arrives. `display=swap` means text is painted in the fallback
@@ -35,23 +45,160 @@
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600;700&display=swap" />
     </noscript>
-    <meta property="og:title" content="SapinSapin AI — Open foundations for Philippine AI" />
-    <meta property="og:description" content="Open datasets and models for Philippine languages, built in public." />
+
+    <!-- ===== Open Graph ===== -->
+    <meta property="og:title" content="SapinSapin AI — Open-Source Speech & Language AI for Philippine Languages" />
+    <meta property="og:description" content="Open datasets, speech recognition, text-to-speech, and language models for 10+ Philippine languages. 500+ verified speech hours, 28 public models — built in public for researchers and developers." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sapinsapin.ai/" />
     <meta property="og:site_name" content="SapinSapin AI" />
-    <meta property="og:image" content="https://sapinsapin.ai/og-card.svg" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="SapinSapin AI — Open foundations for Philippine AI" />
-    <meta name="twitter:description" content="Open datasets and models for Philippine languages, built in public." />
-    <meta name="twitter:image" content="https://sapinsapin.ai/og-card.svg" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://sapinsapin.ai/og-card.jpg" />
+    <meta property="og:image:alt" content="SapinSapin AI — Every voice belongs in the future. Open foundations for Philippine AI." />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+
+    <!-- ===== Twitter Card ===== -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SapinSapin AI — Open-Source Speech & Language AI for Philippine Languages" />
+    <meta name="twitter:description" content="Open datasets, speech recognition, text-to-speech, and language models for 10+ Philippine languages. 500+ verified speech hours, 28 public models — built in public." />
+    <meta name="twitter:image" content="https://sapinsapin.ai/og-card.jpg" />
+    <meta name="twitter:image:alt" content="SapinSapin AI — Every voice belongs in the future. Open foundations for Philippine AI." />
+
+    <!-- ===== Structured Data: Organization ===== -->
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"Organization","name":"SapinSapin AI","alternateName":"Sariling AI PINas","url":"https://sapinsapin.ai","sameAs":["https://huggingface.co/sapinsapin","https://github.com/sapinsapin"],"description":"An open initiative building corpora, benchmarks, and models for Philippine-language AI."}
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "SapinSapin AI",
+        "alternateName": "Sariling AI PINas",
+        "url": "https://sapinsapin.ai",
+        "logo": "https://sapinsapin.ai/favicon.svg",
+        "foundingDate": "2025",
+        "description": "An open initiative building corpora, benchmarks, and models for Philippine-language AI, spanning speech recognition, text-to-speech, and natural language processing across 10+ languages.",
+        "knowsAbout": ["Philippine languages", "speech recognition", "text-to-speech", "natural language processing", "Filipino AI", "low-resource languages", "open-source AI"],
+        "sameAs": [
+          "https://huggingface.co/sapinsapin",
+          "https://github.com/sapinsapin"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "url": "https://github.com/sapinsapin/halohalo/issues",
+          "contactType": "technical support"
+        }
+      }
     </script>
-    <title>SapinSapin AI — Open foundations for Philippine AI</title>
+
+    <!-- ===== Structured Data: WebSite with SearchAction ===== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "SapinSapin AI",
+        "url": "https://sapinsapin.ai",
+        "description": "Open-source speech and language AI foundations for Philippine languages.",
+        "inLanguage": "en",
+        "publisher": {
+          "@type": "Organization",
+          "name": "SapinSapin AI",
+          "url": "https://sapinsapin.ai"
+        }
+      }
+    </script>
+
+    <!-- ===== Structured Data: ResearchProject ===== -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ResearchProject",
+        "name": "SapinSapin AI — Philippine Language AI Research",
+        "url": "https://sapinsapin.ai",
+        "description": "An open research initiative building speech and language foundations — datasets, benchmarks, and models — for 10+ Philippine languages including Filipino, Cebuano, Ilocano, Hiligaynon, Bikol, Pangasinan, Kapampangan, Tausug, and Waray.",
+        "funder": {
+          "@type": "Organization",
+          "name": "SapinSapin AI"
+        },
+        "memberOf": {
+          "@type": "Organization",
+          "name": "Hugging Face",
+          "url": "https://huggingface.co/sapinsapin"
+        },
+        "knowsAbout": [
+          "Philippine Language Dataset (PLD)",
+          "Filipino Speech Corpus",
+          "Speech recognition for Philippine languages",
+          "Text-to-speech for Philippine languages",
+          "Voice conversion",
+          "Low-resource language AI"
+        ]
+      }
+    </script>
+
+    <!-- ===== Analytics Hooks (insert your IDs) ===== -->
+    <!-- Google Analytics 4: Uncomment and replace GA_MEASUREMENT_ID
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+    -->
+    <!-- Google Search Console: Uncomment and replace VERIFICATION_TOKEN
+    <meta name="google-site-verification" content="VERIFICATION_TOKEN" />
+    -->
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- ===== Noscript Fallback ===== -->
+    <!-- Provides core content for search engine crawlers that don't fully
+         render JavaScript SPAs, and for users with JS disabled. -->
+    <noscript>
+      <div style="max-width:800px;margin:0 auto;padding:2rem;font-family:Georgia,serif;color:#1A1613;background:#FBF7F0">
+        <h1 style="font-size:2.5rem;letter-spacing:-.04em">SapinSapin AI — Open Foundations for Philippine AI</h1>
+        <p style="font-size:1.1rem;line-height:1.7;color:#444">SapinSapin AI builds open speech and language foundations so Philippine AI can be made with — and for — the people who speak it.</p>
+
+        <h2 style="margin-top:2rem">What We Build</h2>
+        <p>Open datasets, speech recognition models, text-to-speech systems, and language models for 10+ Philippine languages: Filipino, Cebuano, Ilocano, Hiligaynon, Bikol, Pangasinan, Kapampangan, Tausug, Waray, and English.</p>
+
+        <h2 style="margin-top:2rem">Datasets</h2>
+        <ul>
+          <li><strong>Philippine Language Dataset (PLD)</strong> — 334,268 utterances across 10 languages, 448+ hours of prompted 16 kHz speech</li>
+          <li><strong>Filipino Speech Corpus</strong> — 305,246 segments, 65+ hours of Filipino/Tagalog speech (MIT license)</li>
+          <li><strong>BantayWika</strong> — 6.09M verified tokens of Filipino, Cebuano, and Ilocano text</li>
+          <li><strong>halohalo</strong> — 45,536 rows of cleaned Philippine-language web data</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Models</h2>
+        <p>28 public models spanning speech recognition (Whisper fine-tunes), text-to-speech (SpeechT5 fine-tunes), voice conversion, and text generation (Llama 3.1 and GPT-oss-20b continued pretraining).</p>
+
+        <h2 style="margin-top:2rem">Live Demo</h2>
+        <p>Try speech recognition, text-to-speech, and voice conversion for Philippine languages at <a href="https://huggingface.co/spaces/sapinsapin/halohalo-dashboard">the halohalo Space on Hugging Face</a>.</p>
+
+        <h2 style="margin-top:2rem">FAQ</h2>
+        <dl>
+          <dt><strong>Which license applies?</strong></dt>
+          <dd>Licenses are dataset-specific. MIT and the UP-DSP research license appear among the current datasets. Always read the dataset card before use.</dd>
+          <dt style="margin-top:1rem"><strong>Can I use the data commercially?</strong></dt>
+          <dd>It depends on the individual dataset license and any access conditions. The linked Hugging Face dataset card is the source of record.</dd>
+          <dt style="margin-top:1rem"><strong>How do I contribute?</strong></dt>
+          <dd>Open an issue or discussion on a SapinSapin repository on GitHub.</dd>
+          <dt style="margin-top:1rem"><strong>What is the model roadmap?</strong></dt>
+          <dd>The catalog includes language, speech recognition, text-to-speech, and audio-to-audio models. Follow the Hugging Face activity for updates.</dd>
+        </dl>
+
+        <h2 style="margin-top:2rem">Links</h2>
+        <ul>
+          <li><a href="https://huggingface.co/sapinsapin">Hugging Face Organization</a></li>
+          <li><a href="https://github.com/sapinsapin">GitHub</a></li>
+          <li><a href="https://github.com/sapinsapin/halohalo/issues">Contact / Contribute</a></li>
+        </ul>
+
+        <p style="margin-top:2rem;font-size:.85rem;color:#666">© 2026 SapinSapin AI · Designed for open research</p>
+      </div>
+    </noscript>
   </body>
 </html>

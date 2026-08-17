@@ -779,10 +779,11 @@ function PartnersAndFaq() {
     ['Can I use the data commercially?', 'It depends on the individual dataset license and any access conditions. Do not infer commercial permission from this site; the linked Hugging Face dataset card is the source of record.'],
     ['How are datasets updated?', 'Dataset cards on the Hugging Face Hub show their own last-updated date and documentation. This homepage is designed around a catalog snapshot and should be refreshed from the Hub before each deployment.'],
     ['How do I contribute?', 'The current public invitation is to open an issue or discussion on a SapinSapin repository. This makes proposals, improvements, and questions visible to the community.'],
-    ['What is the model roadmap?', 'The public catalog currently includes language, speech recognition, text-to-speech, and audio-to-audio models. For roadmap details, follow the organization’s Hugging Face activity and public repositories.'],
+    ['What is the model roadmap?', 'The public catalog currently includes language, speech recognition, text-to-speech, and audio-to-audio models. For roadmap details, follow the organization\u2019s Hugging Face activity and public repositories.'],
   ]
-  return <section className="section-shell pt-28 sm:pt-40"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"><div><SectionHeading eyebrow="Partners" title="Grounded in research.">The partner space is intentionally restrained until there is a verified list to show.</SectionHeading><div className="partner-card mt-10"><div className="partner-mark">UP</div><div><p className="font-semibold tracking-[-.035em] text-ink">UP Diliman DSP Laboratory</p><p className="mt-1 text-sm text-ink/63">Verified contributor to the underlying speech and text corpus work.</p></div></div></div><div><Eyebrow>Frequently asked questions</Eyebrow><div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">{faqs.map(([question, answer]) => <details className="faq" key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div></div></section>
+  return <section id="faq" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"><div><SectionHeading eyebrow="Partners" title="Grounded in research.">The partner space is intentionally restrained until there is a verified list to show.</SectionHeading><div className="partner-card mt-10"><div className="partner-mark">UP</div><div><p className="font-semibold tracking-[-.035em] text-ink">UP Diliman DSP Laboratory</p><p className="mt-1 text-sm text-ink/63">Verified contributor to the underlying speech and text corpus work.</p></div></div></div><div><Eyebrow>Frequently asked questions</Eyebrow><div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">{faqs.map(([question, answer]) => <details className="faq" key={question}><summary><h3 className="inline">{question}</h3><span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div></div></section>
 }
+
 
 /* Appears once the reader has scrolled a screen or so down, so it can carry
    them straight back to the unscrolled, header-above-hero view. */
@@ -872,15 +873,44 @@ function App() {
     requestAnimationFrame(() => target.scrollIntoView({ block: 'center' }))
   }, [])
 
-  const datasetsSchema = { '@context': 'https://schema.org', '@type': 'DataCatalog', name: 'SapinSapin AI public dataset catalog', url: `${hub}?tab=datasets`, dataset: datasets.map(({ title, description, href, license }) => ({ '@type': 'Dataset', name: title, description, url: href, license: license === '{{VERIFY}}' ? undefined : license })) }
+  const datasetsSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'DataCatalog',
+    name: 'SapinSapin AI — Open Philippine Language Dataset Catalog',
+    url: `${hub}?tab=datasets`,
+    description: 'A curated catalog of open speech and text datasets for Philippine-language AI research, spanning 10+ languages including Filipino, Cebuano, Ilocano, and Hiligaynon.',
+    provider: { '@type': 'Organization', name: 'SapinSapin AI', url: 'https://sapinsapin.ai' },
+    dateModified: catalogSnapshot,
+    inLanguage: ['fil', 'ceb', 'ilo', 'hil', 'bcl', 'pag', 'pam', 'tsg', 'war', 'en'],
+    dataset: datasets.map(({ title, description, href, license }) => ({
+      '@type': 'Dataset',
+      name: title,
+      description,
+      url: href,
+      license: license === '{{VERIFY}}' ? undefined : license,
+    })),
+  }
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      { '@type': 'Question', name: 'Which license applies to SapinSapin AI datasets?', acceptedAnswer: { '@type': 'Answer', text: 'Licenses are dataset-specific. The catalog lists the license shown on each public Hub card; MIT and the UP-DSP research license appear among the current datasets. Always read the dataset card and its terms before use.' } },
+      { '@type': 'Question', name: 'Can I use Philippine language AI data commercially?', acceptedAnswer: { '@type': 'Answer', text: 'It depends on the individual dataset license and any access conditions. Do not infer commercial permission from this site; the linked Hugging Face dataset card is the source of record.' } },
+      { '@type': 'Question', name: 'How are Philippine language datasets updated?', acceptedAnswer: { '@type': 'Answer', text: 'Dataset cards on the Hugging Face Hub show their own last-updated date and documentation. This homepage is designed around a catalog snapshot and should be refreshed from the Hub before each deployment.' } },
+      { '@type': 'Question', name: 'How do I contribute to SapinSapin AI?', acceptedAnswer: { '@type': 'Answer', text: 'The current public invitation is to open an issue or discussion on a SapinSapin repository. This makes proposals, improvements, and questions visible to the community.' } },
+      { '@type': 'Question', name: 'What is the SapinSapin AI model roadmap?', acceptedAnswer: { '@type': 'Answer', text: 'The public catalog currently includes language, speech recognition, text-to-speech, and audio-to-audio models. For roadmap details, follow the organization\'s Hugging Face activity and public repositories.' } },
+    ],
+  }
 
   return <>
     <a href="#work" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">Skip to content</a>
     <Nav theme={theme} onToggleTheme={toggleTheme} />
-    <main><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
+    <main aria-label="SapinSapin AI — Open foundations for Philippine-language AI"><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
     <Footer />
     <BackToTop />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetsSchema) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
   </>
 }
 

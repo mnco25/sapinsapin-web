@@ -1,4 +1,17 @@
+# SapinSapin AI — https://sapinsapin.ai
+# Open foundations for Philippine-language AI
+
 User-agent: *
 Allow: /
+Disallow: /assets/
+Crawl-delay: 1
+
+# Prevent indexing of Vite build artifacts
+User-agent: *
+Disallow: /*.js.map$
+Disallow: /*.css.map$
+
+# Host
+Host: https://sapinsapin.ai
 
 Sitemap: https://sapinsapin.ai/sitemap.xml
