@@ -51,6 +51,16 @@ export class SpaceError extends Error {
 
 const isAbort = (error) => error?.name === 'AbortError' || error?.name === 'TimeoutError'
 
+// The platform's own timeout signal is throttled savagely once a tab is hidden
+// — measured at 22x late on a backgrounded page, where a plain setTimeout stayed
+// accurate. Left as-is, someone who started a request and switched tabs would
+// hold a budget that never fired, and with it the cross-tab lock.
+function deadline(ms) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(new DOMException('The request timed out', 'TimeoutError')), ms)
+  return { signal: controller.signal, done: () => clearTimeout(timer) }
+}
+
 /* ---------------------------------------------------------------- scheduler */
 
 // One request at a time, in the order asked for. Jobs waiting their turn report
@@ -87,6 +97,48 @@ function schedule(task, { signal, onPosition } = {}) {
   })
 }
 
+// The queue above is per page, but the Space's one-at-a-time limit is not: two
+// tabs of this site would each think they were alone and deadlock it exactly as
+// two parallel requests do. Web Locks are held per origin across tabs, so this
+// makes the whole browser take turns, not just the page.
+//
+// It cannot reach other people's browsers. Two visitors at once still collide —
+// that is what the timeout and the retryable network errors are for, and why
+// fixing it properly means paying for a Space that can serve more than one
+// request at a time.
+const SPACE_LOCK = 'sapinsapin-space-request'
+
+// Above the longest per-request budget, so this never pre-empts a legitimately
+// slow model load. It exists because a slot that never finishes would hold the
+// queue — and the cross-tab lock — closed for the life of the page, turning one
+// stuck request into a demo that is permanently dead in every tab.
+const SLOT_CEILING_MS = 210_000
+
+function watchdog(task) {
+  return new Promise((resolve, reject) => {
+    const bell = setTimeout(
+      () => reject(new SpaceError('The Space did not answer in time.', { kind: 'timeout', retryable: true })),
+      SLOT_CEILING_MS,
+    )
+    task().then(resolve, reject).finally(() => clearTimeout(bell))
+  })
+}
+
+async function runExclusive(task, onBlocked) {
+  const locks = globalThis.navigator?.locks
+  if (!locks) return task()
+
+  // Probe first so a tab that has to wait can say so, instead of sitting on
+  // "Connecting…" for however long the other tab's request takes.
+  try {
+    const free = await locks.request(SPACE_LOCK, { ifAvailable: true }, (lock) => Boolean(lock))
+    if (!free) onBlocked?.()
+  } catch {
+    /* probing is optional; fall through to the real acquisition */
+  }
+  return locks.request(SPACE_LOCK, task)
+}
+
 async function pump() {
   if (running) return
   const entry = waiting.shift()
@@ -95,7 +147,9 @@ async function pump() {
   notifyPositions()
   entry.onPosition?.(0)
   try {
-    entry.resolve(await entry.task())
+    // Position 1 reads as "waiting for the Space to free up", which is exactly
+    // what a lock held by another tab means.
+    entry.resolve(await runExclusive(() => watchdog(entry.task), () => entry.onPosition?.(1)))
   } catch (error) {
     entry.reject(error)
   } finally {
@@ -158,7 +212,8 @@ async function readEvents(response, { onHeartbeat } = {}) {
 async function request(endpoint, data, { signal, timeoutMs = 30_000, onHeartbeat } = {}) {
   // One timeout covering both legs, so a job cannot outlive its budget by
   // spending it twice.
-  const timeout = AbortSignal.timeout(timeoutMs)
+  const budget = deadline(timeoutMs)
+  const timeout = budget.signal
   const composed = signal ? AbortSignal.any([signal, timeout]) : timeout
 
   let posted
@@ -191,6 +246,8 @@ async function request(endpoint, data, { signal, timeoutMs = 30_000, onHeartbeat
     return await readEvents(stream, { onHeartbeat })
   } catch (error) {
     throw translate(error, signal, timeout)
+  } finally {
+    budget.done()
   }
 }
 
@@ -243,35 +300,49 @@ const markWarm = (capability, language) => warm.add(warmKey(capability, language
 
 /* -------------------------------------------------------------------- files */
 
-export async function uploadBlob(blob, filename, { signal } = {}) {
+export async function uploadBlob(blob, filename, { signal, timeoutMs = 60_000 } = {}) {
   const form = new FormData()
   form.append('files', blob, filename)
-  let response
+  const budget = deadline(timeoutMs)
+  const timeout = budget.signal
+  const composed = signal ? AbortSignal.any([signal, timeout]) : timeout
   try {
-    response = await fetch(`${api}/upload`, { method: 'POST', body: form, signal })
-  } catch (error) {
-    throw translate(error, signal)
+    let response
+    try {
+      response = await fetch(`${api}/upload`, { method: 'POST', body: form, signal: composed })
+    } catch (error) {
+      throw translate(error, signal, timeout)
+    }
+    if (!response.ok) throw new SpaceError(`Upload failed (${response.status}).`, { kind: 'failed', retryable: true })
+    const [path] = await response.json()
+    if (!path) throw new SpaceError('Upload returned no path.', { kind: 'failed' })
+    return { path, meta: { _type: 'gradio.FileData' } }
+  } finally {
+    budget.done()
   }
-  if (!response.ok) throw new SpaceError(`Upload failed (${response.status}).`, { kind: 'failed', retryable: true })
-  const [path] = await response.json()
-  if (!path) throw new SpaceError('Upload returned no path.', { kind: 'failed' })
-  return { path, meta: { _type: 'gradio.FileData' } }
 }
 
 // Generated audio is served as application/octet-stream, which Safari refuses to
 // decode from a bare <audio src>. Pulling the bytes and re-typing them as WAV
 // makes it play everywhere, and gives us a stable object URL to revoke.
-export async function fetchAudioBlob(fileData, { signal } = {}) {
+export async function fetchAudioBlob(fileData, { signal, timeoutMs = 60_000 } = {}) {
   const url = fileData?.url ?? (fileData?.path ? `${api}/file=${fileData.path}` : null)
   if (!url) throw new SpaceError('The Space returned no audio.', { kind: 'failed' })
-  let response
+  const budget = deadline(timeoutMs)
+  const timeout = budget.signal
+  const composed = signal ? AbortSignal.any([signal, timeout]) : timeout
   try {
-    response = await fetch(url, { signal })
-  } catch (error) {
-    throw translate(error, signal)
+    let response
+    try {
+      response = await fetch(url, { signal: composed })
+    } catch (error) {
+      throw translate(error, signal, timeout)
+    }
+    if (!response.ok) throw new SpaceError(`Could not download the audio (${response.status}).`, { kind: 'failed' })
+    return new Blob([await response.arrayBuffer()], { type: 'audio/wav' })
+  } finally {
+    budget.done()
   }
-  if (!response.ok) throw new SpaceError(`Could not download the audio (${response.status}).`, { kind: 'failed' })
-  return new Blob([await response.arrayBuffer()], { type: 'audio/wav' })
 }
 
 /* ------------------------------------------------------------------- shapes */
@@ -365,21 +436,29 @@ export function synthesize({ language, voice, text: input }, options = {}) {
 // /transcribe needs no preparation: its language dropdown holds all ten
 // languages at all times, and the other two inputs are free-form.
 export function transcribe({ language, audio, reference = '' }, options = {}) {
-  return schedule(async () => {
-    const value = await request('transcribe', [language, audio, reference], { ...options, ...heavy })
-    markWarm('asr', language)
-    return { text: text(value?.[0]) }
-  }, options)
+  return schedule(
+    () =>
+      withStaleSessionRetry(async () => {
+        const value = await request('transcribe', [language, audio, reference], { ...options, ...heavy })
+        markWarm('asr', language)
+        return { text: text(value?.[0]) }
+      }),
+    options,
+  )
 }
 
 // /convert needs no preparation either: its target-voice dropdown holds all
 // twenty voices, which is why they are the language-prefixed spelling.
 export function convert({ audio, voice }, options = {}) {
-  return schedule(async () => {
-    const value = await request('convert', [audio, voice], { ...options, ...heavy })
-    const output = file(value?.[0])
-    if (!output) throw new SpaceError('The Space returned no audio.', { kind: 'failed' })
-    markWarm('vc')
-    return { audio: output, details: text(value?.[1]) }
-  }, options)
+  return schedule(
+    () =>
+      withStaleSessionRetry(async () => {
+        const value = await request('convert', [audio, voice], { ...options, ...heavy })
+        const output = file(value?.[0])
+        if (!output) throw new SpaceError('The Space returned no audio.', { kind: 'failed' })
+        markWarm('vc')
+        return { audio: output, details: text(value?.[1]) }
+      }),
+    options,
+  )
 }

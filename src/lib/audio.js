@@ -165,6 +165,9 @@ export async function toSpeechWav(input, { maxSeconds = MAX_SECONDS, trim = fals
   const resampled = await resample(mono, decoded.sampleRate)
   return {
     blob: encodeWav(resampled),
+    // Returned so the preview player does not decode a second time the audio we
+    // have already decoded, resampled and encoded here.
+    peaks: peaksFrom(resampled, 96),
     seconds: Math.min(seconds, maxSeconds),
     originalSeconds: seconds,
     trimmed,
@@ -172,16 +175,13 @@ export async function toSpeechWav(input, { maxSeconds = MAX_SECONDS, trim = fals
 }
 
 /**
- * Reduce a clip to `buckets` normalised peaks for drawing a waveform.
+ * Reduce samples to `buckets` normalised peaks for drawing a waveform.
  *
  * Peak per bucket rather than RMS: speech is mostly quiet, and an RMS envelope
  * of a sentence reads as a flat sausage. Normalising to the loudest bucket
  * keeps a softly-recorded speaker legible instead of drawing a flat line.
  */
-export async function extractPeaks(blob, buckets = 96) {
-  const decoded = await decode(audioContext(), await blob.arrayBuffer())
-
-  const mono = toMono(decoded)
+function peaksFrom(mono, buckets) {
   const size = Math.max(1, Math.floor(mono.length / buckets))
   const peaks = new Float32Array(buckets)
   let loudest = 0
@@ -198,7 +198,13 @@ export async function extractPeaks(blob, buckets = 96) {
   }
 
   if (loudest > 0) for (let i = 0; i < buckets; i += 1) peaks[i] /= loudest
-  return { peaks: Array.from(peaks), seconds: decoded.duration }
+  return Array.from(peaks)
+}
+
+/** Peaks for audio we did not encode ourselves — a result fetched from the Space. */
+export async function extractPeaks(blob, buckets = 96) {
+  const decoded = await decode(audioContext(), await blob.arrayBuffer())
+  return { peaks: peaksFrom(toMono(decoded), buckets), seconds: decoded.duration }
 }
 
 /* ------------------------------------------------------------------ capture */
@@ -239,12 +245,7 @@ export async function startRecording({ maxSeconds = MAX_SECONDS, onTick, onAutoS
   recorder.start()
 
   const tick = setInterval(() => onTick?.((Date.now() - startedAt) / 1000), 200)
-  const cap = setTimeout(() => {
-    if (recorder.state === 'recording') {
-      onAutoStop?.()
-      recorder.stop()
-    }
-  }, maxSeconds * 1000)
+  let cap
 
   const release = () => {
     clearInterval(tick)
@@ -252,8 +253,11 @@ export async function startRecording({ maxSeconds = MAX_SECONDS, onTick, onAutoS
     stream.getTracks().forEach((track) => track.stop())
   }
 
-  return {
-    async stop() {
+  // Memoised, so hitting the cap and then pressing stop yields one recording and
+  // one release rather than racing to build the blob twice.
+  let finishing = null
+  const finish = () => {
+    finishing ??= (async () => {
       try {
         if (recorder.state === 'recording') recorder.stop()
         await stopped
@@ -263,7 +267,18 @@ export async function startRecording({ maxSeconds = MAX_SECONDS, onTick, onAutoS
       } finally {
         release()
       }
-    },
-    cancel: release,
+    })()
+    return finishing
   }
+
+  // Reaching the cap finalises the recording outright. Merely calling
+  // recorder.stop() here would leave the microphone track live until the visitor
+  // pressed a button that no longer did anything — the browser would keep
+  // showing its recording indicator for a recording that had already ended.
+  cap = setTimeout(() => {
+    if (recorder.state !== 'recording') return
+    finish().then((result) => onAutoStop?.(result), () => onAutoStop?.(null))
+  }, maxSeconds * 1000)
+
+  return { stop: finish, cancel: release }
 }

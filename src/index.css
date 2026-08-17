@@ -839,7 +839,10 @@
     transition: background-color .45s ease, border-color .45s ease;
   }
   .demo-intro { display: grid; gap: 2rem; padding: 2rem 1.5rem 2.25rem; }
-  .demo-placeholder { min-height: 44rem; border-top: 1px solid var(--border-soft); background: var(--surface-panel); }
+  /* Measured against the mounted console (659px at the desktop breakpoint), not
+     estimated — this is the whole point of the placeholder, so a wrong number
+     just moves the layout shift rather than removing it. */
+  .demo-placeholder { min-height: 41.2rem; border-top: 1px solid var(--border-soft); background: var(--surface-panel); }
 
   /* The capability switcher. Cards rather than pills: each one carries a label
      and a plain-language subtitle, which is what makes three unfamiliar model

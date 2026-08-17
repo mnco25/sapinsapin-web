@@ -11,7 +11,8 @@
     "prepare:icons": "node scripts/prepare-icons.mjs",
     "sync": "node scripts/sync-catalog.mjs && node scripts/sync-space.mjs",
     "sync:catalog": "node scripts/sync-catalog.mjs",
-    "sync:space": "node scripts/sync-space.mjs"
+    "sync:space": "node scripts/sync-space.mjs",
+    "check:space": "node scripts/check-space.mjs"
   },
   "dependencies": {
     "@number-flow/react": "^0.6.2",

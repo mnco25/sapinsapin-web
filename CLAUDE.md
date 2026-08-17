@@ -176,6 +176,36 @@ Run `npm run sync` before any deploy and the first four rows never come up. If t
 asleep at build time the sync fails loudly — the committed manifest is still on disk, so
 `npm run build` alone will still produce a working site with slightly stale lists.
 
+`npm run check:space` asserts the facts above against the live Space — CORS, the six
+endpoints and their parameter order, manifest agreement, and that session-scoped choices are
+still required. It is the closest thing here to a test for the demo; run it in CI or before a
+deploy. It fails with the specific fact that moved, and its last two checks would start
+failing if Gradio ever stopped scoping choices per session, which is the signal that
+`spaceClient.js` could be simplified.
+
+#### Three rules that are easy to undo by accident
+
+- **Never use `AbortSignal.timeout` in browser code here.** It is throttled once a tab is
+  hidden — measured at 22x late on a backgrounded page, where `setTimeout` stayed accurate.
+  A request whose budget never fires holds the cross-tab lock with it. `deadline()` in
+  `spaceClient.js` exists for this; the build scripts are Node and may use either.
+- **Every queue slot must end.** `watchdog()` bounds one at 210s, above the longest request
+  budget. Without it a single stuck request closes the queue *and the cross-tab lock* for the
+  life of the page, in every tab — which is a dead demo, not a slow one.
+- **Recording finalises itself at the cap.** Calling `recorder.stop()` alone leaves the
+  microphone track live and the browser's recording indicator lit for a recording that has
+  already ended, until the visitor presses a button that no longer does anything.
+
+#### Not verified here
+
+Everything above was exercised in Chrome, including the webm→WAV path (driven through a real
+`MediaRecorder` fed by an oscillator, so no microphone permission is needed — see the pattern
+if you want to re-run it). **Safari and iOS have never been tested**, and they are exactly
+where the untested branches live: the `decodeAudioData` callback form, MediaRecorder's
+mp4/aac output, `audio/wav` re-typing, and iOS's gesture requirement for `AudioContext`. The
+`resample` linear-interpolation fallback has also never executed, since `OfflineAudioContext`
+works in Chrome. Worth a pass on a real device before treating those as sound.
+
 The console is lazy-loaded and gated on approaching the viewport, so it stays off the
 first-paint path and a visitor who never scrolls never contacts the Space at all. Feedback
 (`/_fn*`) is deliberately left unwired — anonymous landing-page traffic would pollute the

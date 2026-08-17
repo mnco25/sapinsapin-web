@@ -251,17 +251,19 @@ function useLiveOptions(language, fallback, fetcher) {
   return [options, refresh, busy]
 }
 
-function usePeaks(blob) {
-  const [peaks, setPeaks] = useState(null)
+// `ready` is passed when the caller already has the samples — anything we
+// encoded ourselves — so only audio that arrived from the Space is decoded here.
+function usePeaks(blob, ready) {
+  const [peaks, setPeaks] = useState(ready ?? null)
   useEffect(() => {
-    if (!blob) {
-      setPeaks(null)
+    if (!blob || ready) {
+      setPeaks(ready ?? null)
       return undefined
     }
     let live = true
     extractPeaks(blob).then(({ peaks: next }) => { if (live) setPeaks(next) }).catch(() => {})
     return () => { live = false }
-  }, [blob])
+  }, [blob, ready])
   return peaks
 }
 
@@ -273,9 +275,9 @@ function usePeaks(blob) {
  * This draws the clip's own waveform, which doubles as the scrubber and shows
  * at a glance that a result really is speech and not silence.
  */
-function AudioPlayer({ blob, label, tone = 'ube' }) {
+function AudioPlayer({ blob, label, tone = 'ube', peaks: ready }) {
   const url = useObjectUrl(blob)
-  const peaks = usePeaks(blob)
+  const peaks = usePeaks(blob, ready)
   const audioRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
@@ -475,6 +477,7 @@ function AudioSource({ language, languageLabel, value, onChange, disabled, step 
         const decoded = await toSpeechWav(file, { trim })
         onChange({
           blob: decoded.blob,
+          peaks: decoded.peaks,
           seconds: decoded.seconds,
           caption: `${file.name ?? 'recording'} · ${formatSeconds(decoded.seconds)}${decoded.trimmed ? ' (first 15s)' : ''}`,
         })
@@ -507,17 +510,38 @@ function AudioSource({ language, languageLabel, value, onChange, disabled, step 
     [language, onChange],
   )
 
+  const accept = useCallback(
+    (decoded) => {
+      onChange({
+        blob: decoded.blob,
+        peaks: decoded.peaks,
+        seconds: decoded.seconds,
+        caption: `Your recording · ${formatSeconds(decoded.seconds)}`,
+      })
+    },
+    [onChange],
+  )
+
   const beginRecording = useCallback(async () => {
     setNote(null)
     try {
       setRecorder(await startRecording({
         onTick: setRecordSeconds,
-        onAutoStop: () => setNote('Stopped at the 15-second limit.'),
+        // The cap finalises the recording itself, so this delivers the clip
+        // rather than leaving a "Stop recording" button over a microphone that
+        // has already been released.
+        onAutoStop: (decoded) => {
+          setRecorder(null)
+          setRecordSeconds(0)
+          setNote('Stopped at the 15-second limit.')
+          if (decoded) accept(decoded)
+          else setNote('That recording could not be read.')
+        },
       }))
     } catch (caught) {
       setNote(caught?.message ?? 'Recording could not start.')
     }
-  }, [])
+  }, [accept])
 
   const finishRecording = useCallback(async () => {
     if (!recorder) return
@@ -525,12 +549,11 @@ function AudioSource({ language, languageLabel, value, onChange, disabled, step 
     setRecorder(null)
     setRecordSeconds(0)
     try {
-      const decoded = await handle.stop()
-      onChange({ blob: decoded.blob, seconds: decoded.seconds, caption: `Your recording · ${formatSeconds(decoded.seconds)}` })
+      accept(await handle.stop())
     } catch (caught) {
       setNote(caught?.message ?? 'That recording could not be read.')
     }
-  }, [onChange, recorder])
+  }, [accept, recorder])
 
   useEffect(() => () => recorder?.cancel(), [recorder])
 
@@ -603,7 +626,7 @@ function AudioSource({ language, languageLabel, value, onChange, disabled, step 
       {/* Both halves are checked because they update a render apart: clearing
           the audio on a language change nulls `value` immediately, while the
           object URL is revoked in an effect and survives one more paint. */}
-      {value && <AudioPlayer blob={value.blob} label={`Your audio: ${value.caption}`} tone="ink" />}
+      {value && <AudioPlayer blob={value.blob} peaks={value.peaks} label={`Your audio: ${value.caption}`} tone="ink" />}
     </div>
   )
 }
