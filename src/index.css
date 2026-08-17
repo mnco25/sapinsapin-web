@@ -429,6 +429,25 @@
   .nav-menu-panel a:hover,
   .nav-menu-panel a[data-active='true'] { background: rgb(var(--c-ube) / .1); color: rgb(var(--c-ube)); }
 
+  /* ------------------------------------------------------------ back-to-top */
+  .back-to-top {
+    position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 40;
+    display: grid; place-items: center;
+    height: 2.7rem; width: 2.7rem; border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: rgb(var(--c-paper) / .85);
+    color: rgb(var(--c-ink) / .78);
+    box-shadow: var(--shadow-float);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0; transform: translateY(.6rem) scale(.92);
+    pointer-events: none;
+    transition: opacity .25s ease, transform .3s cubic-bezier(.22, 1, .36, 1), color .22s, border-color .22s, background-color .22s;
+  }
+  .back-to-top[data-visible='true'] { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .back-to-top:hover { color: rgb(var(--c-ube)); border-color: rgb(var(--c-ube) / .5); background: rgb(var(--c-ube) / .08); }
+  @media (min-width: 640px) { .back-to-top { right: 1.75rem; bottom: 1.75rem; } }
+
   /* ------------------------------------------------------------------ hero */
   .hero-frame {
     background: var(--hero-bg);
@@ -1066,13 +1085,29 @@
     border-top: 1px solid var(--border-soft);
   }
   .reference-list li {
+    position: relative;
     display: grid; grid-template-columns: 1.5rem 1fr; align-items: start; gap: .75rem;
     border-bottom: 1px solid var(--border-soft);
     padding: .95rem .5rem .95rem .1rem;
     scroll-margin-top: 7rem;
-    transition: background-color .35s ease;
   }
-  .reference-list li:target { background: rgb(var(--c-ube) / .1); }
+  /* A rounded overlay rather than a background on the row itself, so the
+     highlight reads as a soft card rather than a square tinted cell — and it
+     fades on its own a couple of seconds after landing rather than sitting
+     there for as long as the #ref-… hash stays in the URL. */
+  .reference-list li:target::before {
+    content: ''; position: absolute;
+    inset: .2rem -.4rem;
+    border-radius: 1rem;
+    background: rgb(var(--c-ube) / .16);
+    animation: ref-flash 2.6s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes ref-flash {
+    0% { opacity: 0; transform: scale(.97); }
+    12% { opacity: 1; transform: scale(1); }
+    55% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+  }
   .reference-number {
     display: inline-flex; align-items: center; justify-content: center;
     height: 1.25rem; width: 1.25rem; margin-top: .05rem;

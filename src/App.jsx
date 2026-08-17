@@ -2,13 +2,22 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import NumberFlow from '@number-flow/react'
 import { datasets, models, catalogSnapshot, totals } from './data/catalog'
-import { ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
+import { ArrowUp, ArrowUpRight, CheckIcon, Code, CopyIcon, Dataset, Github, HuggingFace, Mark, MarkMono, Moon, Sun } from './components/Icons'
 import PhilippinesMap from './components/PhilippinesMap'
 import { describeModel } from './data/modelNotes'
 
 const hub = 'https://huggingface.co/sapinsapin'
 const github = 'https://github.com/sapinsapin'
 const space = 'https://huggingface.co/spaces/sapinsapin/halohalo-dashboard'
+
+/* Scrolls to the true document top rather than to the #top hash target —
+   a plain anchor jump lands the Hero's top edge at the viewport top, which
+   leaves it hidden behind the sticky header instead of reproducing the
+   unscrolled, header-above-hero view the page opens with. */
+function scrollToTop() {
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  window.scrollTo({ top: 0, behavior })
+}
 
 const navItems = [
   { id: 'demo', label: 'Demo' },
@@ -334,7 +343,7 @@ function Nav({ theme, onToggleTheme }) {
     className="site-header sticky top-0 z-50 mx-auto max-w-[1440px] px-4 pt-3 sm:px-6 lg:px-9"
   >
     <nav className="nav-shell flex min-h-[60px] items-center justify-between gap-2 rounded-2xl px-3.5 sm:px-5" aria-label="Main navigation">
-      <a href="#top" className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
+      <a href="#top" onClick={(event) => { event.preventDefault(); closeMenus(); scrollToTop(); history.replaceState(null, '', '#top') }} className="brand-lockup rounded-lg py-1.5 text-ink" aria-label="SapinSapin AI home">
         <Mark className="h-[1.85rem] w-[2rem]" />
         <span className="text-[.9rem] font-semibold tracking-[-.045em] whitespace-nowrap">SapinSapin <span className="font-normal text-ink/63">AI</span></span>
       </a>
@@ -365,7 +374,7 @@ function Hero() {
       <div className="relative z-10 max-w-2xl">
         <div className="hero-badge hero-rise hero-rise-1"><span className="hero-pulse" aria-hidden="true" /> Open research infrastructure</div>
         <h1 className="hero-rise hero-rise-2 mt-6 font-display text-[clamp(2.9rem,5.6vw,6.1rem)] font-medium leading-[.92] tracking-[-.068em] text-ink">Every voice<br />belongs in the<br /><em className="font-normal text-ube">future.</em></h1>
-        <p className="hero-rise hero-rise-3 mt-6 max-w-xl text-[1rem] leading-7 text-ink/72 sm:text-lg sm:leading-8">SapinSapin AI builds open speech and language foundations so Philippine AI can be made with — and for — the people who speak it.</p>
+        <p className="hero-rise hero-rise-3 mt-6 max-w-xl text-[1rem] leading-7 text-ink/72 sm:text-lg sm:leading-8 [text-wrap:pretty]">SapinSapin AI builds open speech and language foundations so Philippine AI can be made with — and for — the people who speak it.</p>
         <div className="hero-rise hero-rise-3 mt-8 flex flex-wrap gap-3">
           <a href="#work" className="btn btn-primary">Explore the collections <ArrowUpRight className="h-4 w-4" /></a>
           <ExternalLink href={space} className="btn btn-ghost" label="Open the halohalo live demo on Hugging Face">Try the live demo <ArrowUpRight className="h-4 w-4" /></ExternalLink>
@@ -751,6 +760,38 @@ function PartnersAndFaq() {
   return <section className="section-shell pt-28 sm:pt-40"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"><div><SectionHeading eyebrow="Partners" title="Grounded in research.">The partner space is intentionally restrained until there is a verified list to show.</SectionHeading><div className="partner-card mt-10"><div className="partner-mark">UP</div><div><p className="font-semibold tracking-[-.035em] text-ink">UP Diliman DSP Laboratory</p><p className="mt-1 text-sm text-ink/63">Verified contributor to the underlying speech and text corpus work.</p></div></div></div><div><Eyebrow>Frequently asked questions</Eyebrow><div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">{faqs.map(([question, answer]) => <details className="faq" key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div></div></section>
 }
 
+/* Appears once the reader has scrolled a screen or so down, so it can carry
+   them straight back to the unscrolled, header-above-hero view. */
+function BackToTop() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    let frame = 0
+    const onScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        setVisible(window.scrollY > window.innerHeight * .6)
+        frame = 0
+      })
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(frame) }
+  }, [])
+
+  return <button
+    type="button"
+    onClick={() => scrollToTop()}
+    className="back-to-top"
+    data-visible={visible}
+    aria-hidden={!visible}
+    tabIndex={visible ? 0 : -1}
+    aria-label="Back to top"
+  >
+    <ArrowUp className="h-[1.1rem] w-[1.1rem]" />
+  </button>
+}
+
 function Footer() {
   return <footer className="site-footer mt-28 sm:mt-40"><div className="section-shell py-14 sm:py-20"><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr_.75fr]"><div><div className="flex items-center gap-2.5"><Mark className="h-[2.1rem] w-[2.3rem]" /><p className="font-semibold tracking-[-.04em]">SapinSapin AI</p></div><p className="footer-body mt-5 max-w-sm text-sm leading-6">Open foundations for Philippine-language AI. Built with care for the layers that make a language live.</p></div><div><p className="footer-label">Find us</p><div className="footer-links"><ExternalLink href={github}>GitHub <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href={hub}>Hugging Face <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/sapinsapin/halohalo/issues">Contact / contribute <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/faeldon/philippines-json-maps">Map attribution <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink></div></div><div><p className="footer-label">Licensing</p><p className="footer-body mt-4 text-sm leading-6">No single project-wide license is implied. Individual datasets and models have their own terms, including MIT and other licenses. Check each linked card before use.</p></div></div><div className="footer-rule mt-14 flex flex-col justify-between gap-3 pt-5 text-[11px] sm:flex-row"><p>© 2026 SapinSapin AI</p><p>Catalog data verified {catalogSnapshot} · Designed for open research</p></div></div></footer>
 }
@@ -809,6 +850,7 @@ function App() {
     <Nav theme={theme} onToggleTheme={toggleTheme} />
     <main><Hero /><Demo /><Problem /><Impact /><Datasets /><Models /><Openness /><Contribute /><PartnersAndFaq /><References /></main>
     <Footer />
+    <BackToTop />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetsSchema) }} />
   </>
 }

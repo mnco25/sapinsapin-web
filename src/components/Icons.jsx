@@ -2,6 +2,10 @@ export function ArrowUpRight({ className = '' }) {
   return <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.25 12.75 12.75 3.25M5.5 3.25h7.25v7.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }
 
+export function ArrowUp({ className = '' }) {
+  return <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 12.75V3.25M3.75 7.5 8 3.25l4.25 4.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+}
+
 /* The brand mark: three stacked layers widening downward — the sapin-sapin
    cake the project is named for. Layer fills come from the theme tokens via
    CSS classes so the mark follows light/dark like everything else. */
