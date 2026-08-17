@@ -357,7 +357,10 @@ function Hero() {
         <h1 className="hero-rise hero-rise-2 mt-6 font-display text-[clamp(2.9rem,5.6vw,6.1rem)] font-medium leading-[.92] tracking-[-.068em] text-ink">Every voice<br />belongs in the<br /><em className="font-normal text-ube">future.</em></h1>
         <p className="hero-rise hero-rise-3 mt-6 max-w-xl text-[1rem] leading-7 text-ink/72 sm:text-lg sm:leading-8 [text-wrap:pretty]">SapinSapin AI builds open speech and language foundations so Philippine AI can be made with — and for — the people who speak it.</p>
         <div className="hero-rise hero-rise-3 mt-8 flex flex-wrap gap-3">
-          <a href="#work" className="btn btn-primary">Explore the collections <ArrowUpRight className="h-4 w-4" /></a>
+          {/* Same-page anchor, so it takes the in-page arrow — ArrowUpRight is
+              reserved for links that leave the site (see ExternalLink), which
+              this one never did despite jumping to #work. */}
+          <a href="#work" className="btn btn-primary">Explore the collections <ArrowDown className="h-4 w-4" /></a>
           {/* Points at the demo on this page rather than the Space it used to
               open. The down arrow is the page's mark for an in-page jump; the
               Space is still one click away from inside the demo itself. */}
