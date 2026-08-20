@@ -335,6 +335,20 @@ no `input`/`select`/`textarea` with a computed `font-size` under 16px, and no in
 element under 44px tall. Also switch through all three demo capabilities and all three
 audio sources; several of the controls only exist on one of them.
 
+Two things about that audit are easy to get wrong.
+
+- **Load the real webfonts before measuring.** A headless run usually cannot reach
+  fonts.googleapis.com, so it silently measures the metric-matched fallbacks instead —
+  and those match Inter exactly only at weight 400. The nav bar is the tightest row on the
+  page and its wordmark is weight 600, where real Inter is about 12px narrower than the
+  Arial re-cut. Fetch the stylesheet and its woff2 files, inline them as `data:` URIs, and
+  inject the result with `addStyleTag` before taking any measurement. Both states currently
+  fit, with 18px of headroom at 320px in the worse of the two.
+- **`nav.scrollWidth` reads two pixels under the box width when nothing overflows** — that
+  is the 1px border on each side, not a two-pixel margin. Overflow is `scrollWidth` clearly
+  *above* the box width; anything at box − 2 is fine. Measure real headroom by subtracting
+  the children's widths and gaps from the padding box instead.
+
 ### The hero map
 
 `scripts/prepare-map.mjs` downloads a public Philippine boundary, simplifies it, and
