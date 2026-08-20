@@ -206,6 +206,14 @@ mp4/aac output, `audio/wav` re-typing, and iOS's gesture requirement for `AudioC
 `resample` linear-interpolation fallback has also never executed, since `OfflineAudioContext`
 works in Chrome. Worth a pass on a real device before treating those as sound.
 
+The same caveat covers the mobile pass described under "Mobile and touch" below: the layout,
+overflow and hit-target work was measured in a mobile Chromium emulation across 320–1440px
+in both orientations, which is enough to catch a bar that does not fit or a field that would
+trip Safari's zoom, and is not the same as a real handset. Three things emulation cannot
+answer: whether iOS really leaves the viewport alone at 16px, whether the
+`env(safe-area-inset-*)` padding lands where the notch and the home indicator actually are,
+and how the map and the demo feel under a thumb.
+
 The console is lazy-loaded and gated on approaching the viewport, so it stays off the
 first-paint path and a visitor who never scrolls never contacts the Space at all. Feedback
 (`/_fn*`) is deliberately left unwired — anonymous landing-page traffic would pollute the
@@ -269,6 +277,77 @@ Theme switching uses the View Transitions API for a circular wipe from the toggl
 back to a short color-only crossfade elsewhere; both respect `prefers-reduced-motion`. The
 footer and the code sample stay dark in both themes and carry their own tokens and
 `::selection` colors.
+
+### Mobile and touch
+
+Everything phone- and tablet-specific lives in one unlayered block near the bottom of
+`index.css`, headed **"Touch and small screens"**. Unlayered is deliberate: these rules
+have to beat Tailwind utilities in the markup (`px-4`, `h-7`, `pt-28`), and anything inside
+`@layer components` loses to a utility regardless of specificity — the same reason the
+dark-mode refinements above it are unlayered.
+
+Three rules govern what goes in there.
+
+- **Hit targets and control sizing key off `(pointer: coarse)`, not width.** A finger is the
+  same size on a 360px phone and a 1024px tablet, and a 700px-wide desktop window is still
+  driven by a mouse. Width media queries are for questions that really are about room —
+  how many columns fit, how much padding a section can afford.
+- **Nothing is hidden or shrunk away.** The phone page is shortened by compacting spacing
+  and by putting long lists behind a control, never by dropping a figure, a license, or a
+  caption the desktop page shows.
+- **Safe-area insets are additive.** `env(safe-area-inset-*)` resolves to `0px` in portrait
+  on a device without a notch, so every rule using them is a no-op there.
+
+Four things are easy to undo by accident:
+
+- **Form controls are 16px on touch, in literal pixels.** Mobile Safari zooms the viewport
+  when a field under 16px takes focus and does not zoom back out when the field is left —
+  the visitor is stranded at 1.4x on a page that fit a moment ago. `1rem` is not a
+  substitute: Safari's threshold is absolute, so a visitor with a smaller default font size
+  would still be zoomed. The other way to stop it, `maximum-scale=1` in the viewport tag,
+  buys the same behavior by taking pinch zoom away from everyone who needs it — hence
+  `viewport-fit=cover` and nothing else in both documents' viewport meta.
+- **The demo's text fields turn autocorrect and spellcheck off.** A phone keyboard set to
+  English rewrites Cebuano and Waray as they are typed, so the model would be handed a
+  sentence the visitor never wrote — and the red underline under every word of a Philippine
+  language is that same mistake made visible.
+- **The horizontal nav links appear at `lg`, not `md`.** Between 768px and about 845px the
+  bar cannot hold five links, two icon links and the call to action; below `lg` the same
+  five destinations are in the menu panel. Under 380px the theme toggle moves into that
+  panel too — `.nav-bar-toggle` in the bar and `.nav-menu-theme` in the panel are the same
+  control, and CSS shows exactly one, so only one is ever in the tab order.
+- **`.demo-placeholder` has a height per breakpoint.** The console is 659px at the desktop
+  breakpoint and 985px on a phone, where the columns stack and every control is sized for a
+  finger. One number left the phone with a 326px jump the moment the lazy chunk landed,
+  which is the jump the placeholder exists to prevent. Re-measure the mounted console before
+  changing any of them.
+
+The dataset grid opens at three cards on a phone with a "Show all" control, the way the
+model table already holds itself at five. That is behavior, not styling, so it is a
+`useMediaQuery('(max-width: 639px)')` in `App.jsx` rather than CSS — and it is subscribed,
+not read once, so rotating the phone re-renders instead of leaving the page in the other
+layout's mode. Wider viewports never see the button.
+
+The audit that drove all of this is worth repeating after a layout change: drive the built
+site in a mobile Chromium context and assert three things at 320/360/375/390/414/768 —
+`document.documentElement.scrollWidth === window.innerWidth` (no horizontal overflow),
+no `input`/`select`/`textarea` with a computed `font-size` under 16px, and no interactive
+element under 44px tall. Also switch through all three demo capabilities and all three
+audio sources; several of the controls only exist on one of them.
+
+Two things about that audit are easy to get wrong.
+
+- **Load the real webfonts before measuring.** A headless run usually cannot reach
+  fonts.googleapis.com, so it silently measures the metric-matched fallbacks instead —
+  and those match Inter exactly only at weight 400. The nav bar is the tightest row on the
+  page and its wordmark is weight 600, where real Inter is about 12px narrower than the
+  Arial re-cut. Fetch the stylesheet and its woff2 files, inline them as `data:` URIs, and
+  inject the result with `addStyleTag` before taking any measurement. Both states currently
+  fit, with 18px of headroom at 320px in the worse of the two.
+- **`nav.scrollWidth` reads two pixels under the box width when nothing overflows** — that
+  is the 1px border on each side, not a two-pixel margin. Overflow is `scrollWidth` clearly
+  *above* the box width; anything at box − 2 is fine. Measure real headroom by subtracting
+  the children's widths and gaps from the padding box instead.
 
 ### The hero map
 

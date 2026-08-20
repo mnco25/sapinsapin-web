@@ -295,6 +295,14 @@ function Recovery({ route }) {
         aria-describedby="nf-search-count"
         autoComplete="off"
         spellCheck="false"
+        // What gets typed here are fragments of a URL — repo names, model
+        // families, path segments. A phone that capitalises the first letter
+        // and autocorrects "ilo" to "I'll" is actively working against the
+        // matcher. `enterKeyHint` labels the return key "search", which is
+        // also what pressing it does.
+        autoCorrect="off"
+        autoCapitalize="none"
+        enterKeyHint="search"
       />
       {query && <button type="button" className="nf-search-clear" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Clear the search">Clear</button>}
       <kbd className="nf-search-kbd" aria-hidden="true">/</kbd>
