@@ -732,7 +732,26 @@ function SynthesizePanel({ capability, language, languageLabel, languageField })
       <div className="demo-inputs">
         {languageField}
         <Field step="2" label="What should it say?" htmlFor={`${id}-text`}>
-          <textarea id={`${id}-text`} rows={3} value={text} maxLength={220} onChange={(event) => setText(event.target.value)} placeholder={sampleText[language] ?? 'Type a sentence in this language'} />
+          {/* Autocorrect and spellcheck are turned off deliberately, not for
+              tidiness. A phone keyboard set to English will silently rewrite
+              Cebuano and Waray as it is typed — "Maayong" becomes "Maying" —
+              so the model would be asked to read a sentence the visitor never
+              wrote. The red underlines under every word of a Philippine
+              language are the same mistake, made visible. Capitalisation is
+              left on, since these really are sentences. */}
+          <textarea
+            id={`${id}-text`}
+            rows={3}
+            value={text}
+            maxLength={220}
+            onChange={(event) => setText(event.target.value)}
+            placeholder={sampleText[language] ?? 'Type a sentence in this language'}
+            autoCorrect="off"
+            autoCapitalize="sentences"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="done"
+          />
         </Field>
         <Field step="3" label="Voice" htmlFor={`${id}-voice`}>
           <select id={`${id}-voice`} value={voice} onFocus={refreshVoices} onChange={(event) => setVoice(event.target.value)}>
@@ -793,7 +812,23 @@ function TranscribePanel({ capability, language, languageLabel, languageField })
         {languageField}
         <AudioSource step="2" language={language} languageLabel={languageLabel} value={audio} onChange={setAudio} disabled={job.busy} />
         <Field step="3" label="Expected transcript" hint="Optional — filled in for you when you pick a corpus clip." htmlFor={`${id}-ref`}>
-          <input id={`${id}-ref`} type="text" maxLength={300} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="What was actually said" />
+          {/* Same reasoning as the synthesis box: this field holds a sentence
+              in a Philippine language, and a phone keyboard correcting it into
+              English would quietly change what the transcription is scored
+              against. */}
+          <input
+            id={`${id}-ref`}
+            type="text"
+            maxLength={300}
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            placeholder="What was actually said"
+            autoCorrect="off"
+            autoCapitalize="sentences"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="done"
+          />
         </Field>
         <button type="button" className="demo-run" onClick={run} disabled={job.busy || !audio}>
           {job.busy ? 'Working…' : capability.action}

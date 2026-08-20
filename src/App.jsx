@@ -62,6 +62,11 @@ const references = [
   },
 ]
 
+/* How many dataset cards a phone opens with. Three is one screen's worth at
+   the compacted card height, which is enough to show that the catalog has
+   variety in it without turning the section into a wall to be scrolled past. */
+const COMPACT_DATASETS = 3
+
 const referenceIndex = Object.fromEntries(references.map((reference, index) => [reference.id, { ...reference, number: index + 1 }]))
 
 /* Serialises structured data for a <script> tag. The escaping is the point:
@@ -100,7 +105,7 @@ function Cite({ source }) {
 }
 
 function References() {
-  return <section className="section-shell pt-24 sm:pt-32">
+  return <section className="section-shell pt-16 sm:pt-32">
     <div className="reference-block">
       <div className="reference-head">
         <Eyebrow>References</Eyebrow>
@@ -185,6 +190,24 @@ function CountUp({ value, format }) {
     return () => observer.disconnect()
   }, [value])
   return <span ref={ref}><NumberFlow value={shown} format={format} /></span>
+}
+
+/* Live answer to a media query. Used where the difference between phone and
+   desktop is a difference in *behaviour* rather than in styling — CSS handles
+   everything that is only a matter of appearance. Subscribed rather than read
+   once, so rotating a phone or dragging a window across the breakpoint
+   re-renders instead of leaving the page in the other layout's mode. */
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => window.matchMedia?.(query).matches ?? false)
+  useEffect(() => {
+    const list = window.matchMedia?.(query)
+    if (!list) return undefined
+    const onChange = () => setMatches(list.matches)
+    onChange()
+    list.addEventListener('change', onChange)
+    return () => list.removeEventListener('change', onChange)
+  }, [query])
+  return matches
 }
 
 /* Marks whichever section is crossing the middle of the viewport. */
@@ -322,20 +345,37 @@ function Nav({ theme, onToggleTheme }) {
         <Mark className="h-[1.85rem] w-[2rem]" />
         <span className="text-[.9rem] font-semibold tracking-[-.045em] whitespace-nowrap">SapinSapin <span className="font-normal text-ink/63">AI</span></span>
       </a>
-      <div ref={linksRef} className="nav-links hidden items-center gap-1 text-[.78rem] font-medium text-ink/70 md:flex">{links}</div>
+      {/* The inline section links wait for lg rather than md. Between 768 and
+          about 845 they used to overflow the bar — five links, two icon links
+          and the call to action do not fit a tablet-width shell — and that gap
+          only widened once every control in it grew to a 44px touch target.
+          Below lg the same five destinations are in the menu panel, so nothing
+          is out of reach at any width; the bar simply stops pretending it has
+          desktop room. */}
+      <div ref={linksRef} className="nav-links hidden items-center gap-1 text-[.78rem] font-medium text-ink/70 lg:flex">{links}</div>
       <div className="flex items-center gap-1.5 sm:gap-2">
         <ExternalLink href={github} className="nav-icon-link hidden sm:grid" label="SapinSapin AI on GitHub"><Github className="h-[1.1rem] w-[1.1rem]" /></ExternalLink>
         <ExternalLink href={hub} className="nav-icon-link hidden sm:grid" label="SapinSapin AI on Hugging Face"><HuggingFace className="h-[1.1rem] w-[1.1rem]" /></ExternalLink>
         <span className="nav-divider hidden sm:block" aria-hidden="true" />
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        {/* On the narrowest phones this one is hidden and its twin inside the
+            menu panel takes over — brand, call to action and menu are what a
+            320px bar can hold at 44px each. index.css owns the switch, so only
+            one of the two is ever in the tab order. */}
+        <span className="nav-bar-toggle contents"><ThemeToggle theme={theme} onToggle={onToggleTheme} /></span>
         <ExternalLink href={`${hub}?tab=datasets`} className="btn btn-primary !px-3.5 !py-2 !text-[.74rem]" label="Browse SapinSapin AI datasets on Hugging Face">
           <span className="hidden sm:inline">Explore the Hub</span><span className="sm:hidden">Hub</span> <ArrowUpRight className="h-3.5 w-3.5" />
         </ExternalLink>
-        <details className="nav-menu md:hidden" ref={menuRef}>
+        <details className="nav-menu lg:hidden" ref={menuRef}>
           <summary aria-label="Open navigation"><span /><span /><span /></summary>
-          <div className="nav-menu-panel">{navItems.map(({ id, label }) => (
-            <a key={id} href={`#${id}`} data-active={activeId === id} onClick={() => { if (menuRef.current) menuRef.current.open = false }}>{label}</a>
-          ))}</div>
+          <div className="nav-menu-panel">
+            {navItems.map(({ id, label }) => (
+              <a key={id} href={`#${id}`} data-active={activeId === id} onClick={() => { if (menuRef.current) menuRef.current.open = false }}>{label}</a>
+            ))}
+            <div className="nav-menu-theme">
+              <span>Appearance</span>
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            </div>
+          </div>
         </details>
       </div>
     </nav>
@@ -420,7 +460,7 @@ function DeferredConsole() {
 }
 
 function Demo() {
-  return <section id="demo" className="section-shell scroll-mt-24 pt-28 sm:pt-36">
+  return <section id="demo" className="section-shell scroll-mt-24 pt-20 sm:pt-36">
     <div className="demo-panel">
       <div className="demo-intro">
         <div>
@@ -471,7 +511,7 @@ function Problem() {
     ['02', 'Language is local knowledge.', <>The Philippines has more than 170 living indigenous languages, each carrying distinct histories, communities, and ways of seeing.<Cite source="ethnologue" /> A useful AI must be grounded in that reality.</>],
     ['03', 'The foundation has to be open.', 'Open datasets make it possible for researchers, developers, and institutions to inspect, build, and improve together.'],
   ]
-  return <section className="section-shell pt-28 sm:pt-36">
+  return <section className="section-shell pt-20 sm:pt-36">
     <div className="grid gap-12 lg:grid-cols-[.78fr_1.22fr] lg:gap-24">
       <SectionHeading eyebrow="The work begins with data" title={<>AI should understand<br />the Philippines <em className="text-ube">as spoken.</em></>}>Philippine languages remain underrepresented in the datasets that shape modern AI.<Cite source="joshi" /> The work of inclusion starts long before a model is trained.</SectionHeading>
       <Reveal className="divide-y divide-ink/10 border-t border-ink/10">{points.map(([number, title, copy]) => <article key={number} className="grid gap-4 py-8 sm:grid-cols-[60px_1fr] sm:gap-6"><p className="text-xs font-semibold tracking-[.16em] text-ube">{number}</p><div><h3 className="text-xl font-semibold tracking-[-.045em] text-ink">{title}</h3><p className="mt-3 max-w-lg leading-7 text-ink/68">{copy}</p></div></article>)}</Reveal>
@@ -486,7 +526,7 @@ function Impact() {
     { value: 10, label: 'Philippine languages', source: 'in the PLD collection' },
     { value: totals.datasets, label: 'datasets in the catalog', source: `Hub sync · ${catalogSnapshot}` },
   ]
-  return <section className="section-shell pt-28 sm:pt-36"><div className="layer-band"><div className="mb-11 flex flex-col justify-between gap-5 md:flex-row md:items-end"><SectionHeading eyebrow="Impact, made inspectable" title={<>Built in public.<br />Measured honestly.</>} /><p className="max-w-sm text-sm leading-6 text-ink/65">Counts are taken from the public Hub cards and dataset documentation. “Verified” deliberately excludes access-controlled collections whose totals are not public.</p></div><Reveal as="dl" className="grid divide-y divide-ink/10 border-y border-ink/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">{stats.map(({ value, format, label, source }) => <div className="px-0 py-7 sm:px-6 lg:px-7" key={label}><dt className="font-display text-4xl tracking-[-.06em] text-ube sm:text-5xl"><CountUp value={value} format={format} /></dt><dd className="mt-2 text-sm font-semibold tracking-[-.02em] text-ink">{label}</dd><dd className="mt-1 text-xs leading-5 text-ink/60">{source}</dd></div>)}</Reveal></div></section>
+  return <section className="section-shell pt-20 sm:pt-36"><div className="layer-band"><div className="mb-11 flex flex-col justify-between gap-5 md:flex-row md:items-end"><SectionHeading eyebrow="Impact, made inspectable" title={<>Built in public.<br />Measured honestly.</>} /><p className="max-w-sm text-sm leading-6 text-ink/65">Counts are taken from the public Hub cards and dataset documentation. “Verified” deliberately excludes access-controlled collections whose totals are not public.</p></div><Reveal as="dl" className="grid divide-y divide-ink/10 border-y border-ink/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">{stats.map(({ value, format, label, source }) => <div className="px-0 py-7 sm:px-6 lg:px-7" key={label}><dt className="font-display text-4xl tracking-[-.06em] text-ube sm:text-5xl"><CountUp value={value} format={format} /></dt><dd className="mt-2 text-sm font-semibold tracking-[-.02em] text-ink">{label}</dd><dd className="mt-1 text-xs leading-5 text-ink/60">{source}</dd></div>)}</Reveal></div></section>
 }
 
 function DatasetCard({ item, index }) {
@@ -535,7 +575,18 @@ function Datasets() {
   }, [])
   const visible = filter === 'All data' ? datasets : datasets.filter((item) => item.kind === filter)
 
-  return <section id="work" className="section-shell scroll-mt-24 pt-28 sm:pt-40">
+  // Nine cards side by side are three rows of a grid; nine cards stacked are
+  // about four screens of swiping between the invitation to explore the data
+  // and the model catalog underneath it. On a phone the list therefore opens
+  // at three and says how many more there are — the same bargain the model
+  // table already strikes at five, rather than a different one per section.
+  // Wider viewports never see the button: the grid there is already short.
+  const compact = useMediaQuery('(max-width: 639px)')
+  const [expanded, setExpanded] = useState(false)
+  const collapsed = compact && !expanded
+  const shown = collapsed ? visible.slice(0, COMPACT_DATASETS) : visible
+
+  return <section id="work" className="section-shell scroll-mt-24 pt-20 sm:pt-40">
     <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
       <SectionHeading eyebrow="The collection" title="Foundations you can build on.">Speech, text, and language data made discoverable in one place. Each card links directly to its live dataset card, documentation, and terms.</SectionHeading>
       <ExternalLink href={`${hub}?tab=datasets`} className="text-link" label="View all SapinSapin AI datasets on Hugging Face">Visit the Hub <ArrowUpRight className="h-4 w-4" /></ExternalLink>
@@ -543,15 +594,25 @@ function Datasets() {
 
     <div className="dataset-filters" role="group" aria-label="Filter datasets by kind">
       {tabs.map(([label, count]) => (
-        <button key={label} type="button" onClick={() => setFilter(label)} aria-pressed={filter === label} className={filter === label ? 'is-active' : ''}>
+        <button key={label} type="button" onClick={() => { setFilter(label); setExpanded(false) }} aria-pressed={filter === label} className={filter === label ? 'is-active' : ''}>
           {label} <span>{count}</span>
         </button>
       ))}
     </div>
 
     <Reveal className="dataset-grid">
-      {visible.map((item, index) => <DatasetCard key={item.id} item={item} index={index} />)}
+      {shown.map((item, index) => <DatasetCard key={item.id} item={item} index={index} />)}
     </Reveal>
+
+    {compact && visible.length > COMPACT_DATASETS && (
+      <div className="list-more">
+        <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded}>
+          {expanded ? 'Show fewer' : `Show all ${visible.length} collections`}
+          {expanded ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+        </button>
+        <p>Showing {shown.length} of {visible.length}{filter === 'All data' ? '' : ` · ${filter}`}</p>
+      </div>
+    )}
 
     <p className="mt-6 text-xs leading-5 text-ink/60">Sizes and licences are shown exactly as the public Hub card states them; where a card does not state one, this page says so rather than guessing. Counts and dates synced {catalogSnapshot}.</p>
   </section>
@@ -642,7 +703,7 @@ function Models() {
     buttonText = 'Show fewer'
   }
 
-  return <section id="models" className="section-shell scroll-mt-24 pt-28 sm:pt-40">
+  return <section id="models" className="section-shell scroll-mt-24 pt-20 sm:pt-40">
     <div className="models-panel">
       <div className="grid gap-8 px-6 py-8 sm:px-10 sm:py-11 lg:grid-cols-[1fr_.72fr]">
         <SectionHeading eyebrow="Models" title={<>A growing model<br />layer, <em className="text-ube">in the open.</em></>}>The public model catalog spans language generation, speech recognition, text-to-speech, and audio-to-audio work. Every entry below links to its live model card.</SectionHeading>
@@ -721,7 +782,7 @@ function Models() {
 
 function Openness() {
   const principles = [['Open science', 'Methods and artifacts can be inspected, challenged, and extended.'], ['Reproducibility', 'Clear provenance makes research more useful than a result alone.'], ['Digital sovereignty', 'The foundations for local technology should be accessible to the people it serves.'], ['Community ownership', 'Native speakers, researchers, and builders should have a place in the work.'], ['Ethical AI', 'Data choices matter. Limits, licenses, and consent need to travel with the data.'], ['Language preservation', 'Useful language data is infrastructure for future research, learning, and culture.']]
-  return <section id="open" className="scroll-mt-24 pt-28 sm:pt-40"><div className="open-section"><div className="section-shell"><div className="grid gap-14 lg:grid-cols-[.82fr_1.18fr] lg:gap-24"><SectionHeading eyebrow="Why open data matters" title={<>Infrastructure<br />for a plural <em className="text-ube">future.</em></>}>Open data is not a footnote. It is how public-interest research becomes durable, accountable infrastructure.</SectionHeading><Reveal className="grid gap-x-8 gap-y-0 border-t border-ink/10 sm:grid-cols-2">{principles.map(([title, copy], index) => <article className="border-b border-ink/10 py-6" key={title}><p className="font-display text-2xl tracking-[-.045em] text-ube/80">0{index + 1}</p><h3 className="mt-3 font-semibold tracking-[-.035em] text-ink">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/68">{copy}</p></article>)}</Reveal></div></div></div></section>
+  return <section id="open" className="scroll-mt-24 pt-20 sm:pt-40"><div className="open-section"><div className="section-shell"><div className="grid gap-14 lg:grid-cols-[.82fr_1.18fr] lg:gap-24"><SectionHeading eyebrow="Why open data matters" title={<>Infrastructure<br />for a plural <em className="text-ube">future.</em></>}>Open data is not a footnote. It is how public-interest research becomes durable, accountable infrastructure.</SectionHeading><Reveal className="grid gap-x-8 gap-y-0 border-t border-ink/10 sm:grid-cols-2">{principles.map(([title, copy], index) => <article className="border-b border-ink/10 py-6" key={title}><p className="font-display text-2xl tracking-[-.045em] text-ube/80">0{index + 1}</p><h3 className="mt-3 font-semibold tracking-[-.035em] text-ink">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/68">{copy}</p></article>)}</Reveal></div></div></div></section>
 }
 
 function CodeBlock() {
@@ -767,7 +828,7 @@ function Contribute() {
     { icon: Code, number: '02', title: 'Contribute code', text: 'Explore the public repositories, open an issue, improve a pipeline, or share a reproducible experiment.', cta: 'Open GitHub', href: github },
     { icon: MarkMono, number: '03', title: 'Contribute data', text: 'If you work with a Philippine language as a researcher, annotator, native speaker, or engineer, start a conversation in a project issue.', cta: 'Start a conversation', href: 'https://github.com/sapinsapin/halohalo/issues' },
   ]
-  return <section id="contribute" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="contribute-intro"><div><Eyebrow>It takes a village</Eyebrow><h2 className="mt-5 max-w-3xl font-display text-[clamp(2.5rem,5vw,5rem)] font-medium leading-[.96] tracking-[-.065em] text-ink">Help make Philippine AI <em className="text-ube">more possible.</em></h2></div><div className="max-w-md"><p className="text-[1.05rem] leading-7 text-ink/70">This work is designed to be used, questioned, and improved in public.</p><CodeBlock /></div></div><Reveal className="mt-4 grid gap-4 md:grid-cols-3">{cards.map(({ icon: Icon, number, title, text, cta, href }) => <article key={title} className="contribute-card"><div className="flex items-center justify-between"><Icon className="h-7 w-7 text-ube" /><span className="text-xs text-ink/60">{number}</span></div><h3 className="mt-12 text-xl font-semibold tracking-[-.045em] text-ink">{title}</h3><p className="mt-3 min-h-[72px] text-sm leading-6 text-ink/68">{text}</p><ExternalLink href={href} className="text-link mt-8" label={cta}>{cta} <ArrowUpRight className="h-4 w-4" /></ExternalLink></article>)}</Reveal></section>
+  return <section id="contribute" className="section-shell scroll-mt-24 pt-20 sm:pt-40"><div className="contribute-intro"><div><Eyebrow>It takes a village</Eyebrow><h2 className="mt-5 max-w-3xl font-display text-[clamp(2.5rem,5vw,5rem)] font-medium leading-[.96] tracking-[-.065em] text-ink">Help make Philippine AI <em className="text-ube">more possible.</em></h2></div><div className="max-w-md"><p className="text-[1.05rem] leading-7 text-ink/70">This work is designed to be used, questioned, and improved in public.</p><CodeBlock /></div></div><Reveal className="mt-4 grid gap-4 md:grid-cols-3">{cards.map(({ icon: Icon, number, title, text, cta, href }) => <article key={title} className="contribute-card"><div className="flex items-center justify-between"><Icon className="h-7 w-7 text-ube" /><span className="text-xs text-ink/60">{number}</span></div><h3 className="mt-12 text-xl font-semibold tracking-[-.045em] text-ink">{title}</h3><p className="mt-3 min-h-[72px] text-sm leading-6 text-ink/68">{text}</p><ExternalLink href={href} className="text-link mt-8" label={cta}>{cta} <ArrowUpRight className="h-4 w-4" /></ExternalLink></article>)}</Reveal></section>
 }
 
 function PartnersAndFaq() {
@@ -778,7 +839,7 @@ function PartnersAndFaq() {
     ['How do I contribute?', 'The current public invitation is to open an issue or discussion on a SapinSapin repository. This makes proposals, improvements, and questions visible to the community.'],
     ['What is the model roadmap?', 'The public catalog currently includes language, speech recognition, text-to-speech, and audio-to-audio models. For roadmap details, follow the organization\u2019s Hugging Face activity and public repositories.'],
   ]
-  return <section id="faq" className="section-shell scroll-mt-24 pt-28 sm:pt-40"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"><div><SectionHeading eyebrow="Partners" title="Grounded in research.">The partner space is intentionally restrained until there is a verified list to show.</SectionHeading><div className="partner-card mt-10"><div className="partner-mark">UP</div><div><p className="font-semibold tracking-[-.035em] text-ink">UP Diliman DSP Laboratory</p><p className="mt-1 text-sm text-ink/63">Verified contributor to the underlying speech and text corpus work.</p></div></div></div><div><Eyebrow>Frequently asked questions</Eyebrow><div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">{faqs.map(([question, answer]) => <details className="faq" key={question}><summary><h3 className="inline">{question}</h3><span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div></div></section>
+  return <section id="faq" className="section-shell scroll-mt-24 pt-20 sm:pt-40"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"><div><SectionHeading eyebrow="Partners" title="Grounded in research.">The partner space is intentionally restrained until there is a verified list to show.</SectionHeading><div className="partner-card mt-10"><div className="partner-mark">UP</div><div><p className="font-semibold tracking-[-.035em] text-ink">UP Diliman DSP Laboratory</p><p className="mt-1 text-sm text-ink/63">Verified contributor to the underlying speech and text corpus work.</p></div></div></div><div><Eyebrow>Frequently asked questions</Eyebrow><div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">{faqs.map(([question, answer]) => <details className="faq" key={question}><summary><h3 className="inline">{question}</h3><span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></div></div></section>
 }
 
 
@@ -815,7 +876,7 @@ function BackToTop() {
 }
 
 function Footer() {
-  return <footer className="site-footer mt-28 sm:mt-40"><div className="section-shell py-14 sm:py-20"><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr_.75fr]"><div><div className="flex items-center gap-2.5"><Mark className="h-[2.1rem] w-[2.3rem]" /><p className="font-semibold tracking-[-.04em]">SapinSapin AI</p></div><p className="footer-body mt-5 max-w-sm text-sm leading-6">Open foundations for Philippine-language AI. Built with care for the layers that make a language live.</p></div><div><p className="footer-label">Find us</p><div className="footer-links"><ExternalLink href={github}>GitHub <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href={hub}>Hugging Face <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/sapinsapin/halohalo/issues">Contact / contribute <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/faeldon/philippines-json-maps">Map attribution <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink></div></div><div><p className="footer-label">Licensing</p><p className="footer-body mt-4 text-sm leading-6">No single project-wide license is implied. Individual datasets and models have their own terms, including MIT and other licenses. Check each linked card before use.</p></div></div><div className="footer-rule mt-14 flex flex-col justify-between gap-3 pt-5 text-[11px] sm:flex-row"><p>© 2026 SapinSapin AI</p><p>Catalog data verified {catalogSnapshot} · Designed for open research</p></div></div></footer>
+  return <footer className="site-footer mt-20 sm:mt-40"><div className="section-shell py-14 sm:py-20"><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr_.75fr]"><div><div className="flex items-center gap-2.5"><Mark className="h-[2.1rem] w-[2.3rem]" /><p className="font-semibold tracking-[-.04em]">SapinSapin AI</p></div><p className="footer-body mt-5 max-w-sm text-sm leading-6">Open foundations for Philippine-language AI. Built with care for the layers that make a language live.</p></div><div><p className="footer-label">Find us</p><div className="footer-links"><ExternalLink href={github}>GitHub <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href={hub}>Hugging Face <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/sapinsapin/halohalo/issues">Contact / contribute <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink><ExternalLink href="https://github.com/faeldon/philippines-json-maps">Map attribution <ArrowUpRight className="h-3.5 w-3.5" /></ExternalLink></div></div><div><p className="footer-label">Licensing</p><p className="footer-body mt-4 text-sm leading-6">No single project-wide license is implied. Individual datasets and models have their own terms, including MIT and other licenses. Check each linked card before use.</p></div></div><div className="footer-rule mt-14 flex flex-col justify-between gap-3 pt-5 text-[11px] sm:flex-row"><p>© 2026 SapinSapin AI</p><p>Catalog data verified {catalogSnapshot} · Designed for open research</p></div></div></footer>
 }
 
 function App() {

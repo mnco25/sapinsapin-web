@@ -120,6 +120,13 @@ export default function PhilippinesMap() {
                     onClick={() => setActiveId(layer.id)}
                   >
                     {isActive && <circle className="marker-sonar" cx={layer.x} cy={layer.y} r={layer.radius + 3.5} />}
+                    {/* Invisible, and always the same size regardless of how
+                        many downloads the layer has — a quiet language's dot is
+                        the one that most needs the help. 13 user units is about
+                        24px across on a phone-width map, which is as generous
+                        as this can get before the Visayan markers start taking
+                        each other's taps. */}
+                    <circle className="marker-touch" cx={layer.x} cy={layer.y} r={Math.max(layer.radius + 5.5, 13)} />
                     <circle className="marker-halo" cx={layer.x} cy={layer.y} r={layer.radius + 5.5} />
                     <circle className="marker-dot" cx={layer.x} cy={layer.y} r={layer.radius} />
                     <circle className="marker-core" cx={layer.x} cy={layer.y} r={layer.radius * 0.34} />

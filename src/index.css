@@ -161,7 +161,14 @@
     color-scheme: dark;
   }
 
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    /* iOS inflates text in landscape unless this is pinned. It is not the same
+       thing as disabling zoom — pinch zoom still works, the browser just stops
+       silently re-sizing body copy when the device is turned. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
     margin: 0;
     min-width: 320px;
@@ -171,6 +178,17 @@
     font-family: Inter, 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
+  /* Every control on the page has its own pressed/active treatment, so the
+     grey flash Chrome and Safari paint over a tapped element is duplicate
+     feedback that lands a frame late. `touch-action: manipulation` is the
+     load-bearing half: it drops the browser's wait for a possible second tap,
+     which is what makes a tapped chip or tab feel immediate rather than
+     lagging by a third of a second — and it stops a double-tap on a control
+     zooming the page instead. */
+  a, button, summary, label, select, [role='button'], [role='tab'], [role='slider'] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
   ::selection { background: rgb(var(--c-ube) / .28); color: rgb(var(--c-ink)); }
   /* These two surfaces are dark in both themes, so selected text there must
      stay light rather than following --c-ink. */
@@ -441,6 +459,17 @@
   }
   .nav-menu-panel a:hover,
   .nav-menu-panel a[data-active='true'] { background: rgb(var(--c-ube) / .1); color: rgb(var(--c-ube)); }
+  /* Only rendered into the panel on the narrowest phones, where the bar has no
+     room left for the toggle — index.css shows exactly one of the two. */
+  .nav-menu-theme {
+    display: none; align-items: center; justify-content: space-between; gap: .75rem;
+    margin-top: .25rem; border-top: 1px solid var(--border-soft);
+    padding: .5rem .7rem .15rem;
+  }
+  .nav-menu-theme span {
+    font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: rgb(var(--c-ink) / .6);
+  }
 
   /* ------------------------------------------------------------ back-to-top */
   .back-to-top {
@@ -470,6 +499,12 @@
        gap is what guarantees the frame's bottom edge — and so the evidence row
        and the map card inside it — land above the fold rather than flush
        against it. */
+    /* The vh line is the fallback for browsers without svh (iOS < 15.4, older
+       Android WebViews): slightly too tall there, since vh counts the space
+       under the address bar, but never short. svh wins wherever it parses,
+       and is what stops the frame resizing every time Chrome for Android
+       retracts its toolbar mid-scroll. */
+    min-height: calc(100vh - var(--nav-block) - 2.5rem);
     min-height: calc(100svh - var(--nav-block) - 2.5rem);
   }
   .hero-wash {
@@ -567,6 +602,14 @@
   .surface-stop-b { stop-color: var(--map-land-bottom); }
 
   .map-marker { cursor: pointer; }
+  /* The drawn dot is between 5px and 16px across at phone scale, which is
+     nothing under a finger. This invisible disc sits on top of it and takes
+     the tap instead — sized in the same user units as everything else in the
+     viewBox, so it scales with the map rather than drifting off it at some
+     widths. It is only ever a hit target: nothing about the composition
+     changes, and the layer list underneath remains the accessible route to
+     the same choice. */
+  .map-marker .marker-touch { fill: transparent; }
   .map-marker .marker-halo {
     fill: rgb(var(--c-paper)); opacity: .16;
     transition: opacity .3s ease;
@@ -839,10 +882,26 @@
     transition: background-color .45s ease, border-color .45s ease;
   }
   .demo-intro { display: grid; gap: 2rem; padding: 2rem 1.5rem 2.25rem; }
-  /* Measured against the mounted console (659px at the desktop breakpoint), not
-     estimated — this is the whole point of the placeholder, so a wrong number
-     just moves the layout shift rather than removing it. */
-  .demo-placeholder { min-height: 41.2rem; border-top: 1px solid var(--border-soft); background: var(--surface-panel); }
+  /* Measured against the mounted console, not estimated — this is the whole
+     point of the placeholder, so a wrong number just moves the layout shift
+     rather than removing it. One number cannot do it: the console is 659px at
+     the desktop breakpoint and 985px on a phone, where the two columns stack
+     and every control is sized for a finger. A desktop-only figure left a
+     phone with a 326px jump at the moment the chunk landed — which is the
+     jump the placeholder exists to prevent. The steps below are the measured
+     heights at each breakpoint; see "Touch and small screens" for the others. */
+  .demo-placeholder { min-height: 68.5rem; border-top: 1px solid var(--border-soft); background: var(--surface-panel); }
+  @media (min-width: 22.5rem) { .demo-placeholder { min-height: 61.5rem; } }
+  @media (min-width: 27rem) { .demo-placeholder { min-height: 58.5rem; } }
+  @media (min-width: 40rem) { .demo-placeholder { min-height: 47rem; } }
+  @media (min-width: 48rem) { .demo-placeholder { min-height: 43.5rem; } }
+  @media (min-width: 64rem) { .demo-placeholder { min-height: 41.2rem; } }
+  @media (min-width: 80rem) { .demo-placeholder { min-height: 39.2rem; } }
+  /* A finger costs the console roughly 100px of extra control height, so the
+     touch reservation at the two-column breakpoints is its own number. */
+  @media (pointer: coarse) and (min-width: 40rem) { .demo-placeholder { min-height: 53rem; } }
+  @media (pointer: coarse) and (min-width: 48rem) { .demo-placeholder { min-height: 48.5rem; } }
+  @media (pointer: coarse) and (min-width: 64rem) { .demo-placeholder { min-height: 45.5rem; } }
 
   /* The capability switcher. Cards rather than pills: each one carries a label
      and a plain-language subtitle, which is what makes three unfamiliar model
@@ -1204,12 +1263,21 @@
   .model-preview-meta dd { margin: .12rem 0 0; font-size: .72rem; line-height: 1.45; color: rgb(var(--c-ink) / .72); }
   .model-preview-foot { font-size: .64rem; font-variant-numeric: tabular-nums; color: rgb(var(--c-ink) / .60); }
 
-  .model-more {
+  /* `.model-more` sits on the seam of the models panel and so carries the rule
+     and the panel's inline padding; `.list-more` is the same control standing
+     free under a grid of cards (the phone-only dataset expander), so it takes
+     neither. Everything below this pair is shared. */
+  .model-more,
+  .list-more {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem;
+  }
+  .model-more {
     border-top: 1px solid var(--border-soft);
     padding: 1rem 1.5rem;
   }
-  .model-more button {
+  .list-more { margin-top: 1rem; }
+  .model-more button,
+  .list-more button {
     display: inline-flex; align-items: center; gap: .5rem;
     border-radius: 999px; border: 1px solid var(--border-strong);
     background: rgb(var(--c-paper) / .6);
@@ -1218,11 +1286,16 @@
     color: rgb(var(--c-ink));
     transition: background-color .2s, border-color .2s, transform .2s;
   }
-  .model-more button:hover { transform: translateY(-1px); border-color: rgb(var(--c-ube) / .5); background: rgb(var(--c-ube) / .08); }
-  .model-more button span { transition: transform .25s ease; }
-  .model-more button:hover span { transform: translateY(2px); }
-  .model-more button[aria-expanded='true']:hover span { transform: translateY(-2px); }
-  .model-more p { font-size: .72rem; color: rgb(var(--c-ink) / .63); font-variant-numeric: tabular-nums; }
+  .model-more button:hover,
+  .list-more button:hover { transform: translateY(-1px); border-color: rgb(var(--c-ube) / .5); background: rgb(var(--c-ube) / .08); }
+  .model-more button span,
+  .list-more button span { transition: transform .25s ease; }
+  .model-more button:hover span,
+  .list-more button:hover span { transform: translateY(2px); }
+  .model-more button[aria-expanded='true']:hover span,
+  .list-more button[aria-expanded='true']:hover span { transform: translateY(-2px); }
+  .model-more p,
+  .list-more p { font-size: .72rem; color: rgb(var(--c-ink) / .63); font-variant-numeric: tabular-nums; }
 
   .open-section {
     position: relative; overflow: hidden;
@@ -1424,6 +1497,7 @@
     /* Shorter than the homepage hero on purpose. A full-viewport error page
        hides the one thing the reader actually needs — the suggestions — below
        the fold, so the frame stops just high enough to promise more. */
+    min-height: min(34rem, calc(100vh - var(--nav-block) - 6rem));
     min-height: min(34rem, calc(100svh - var(--nav-block) - 6rem));
   }
   .nf-title {
@@ -1796,6 +1870,365 @@
    scroll past an empty hero before reaching the headline. */
 @media (max-height: 34rem) {
   .hero-frame { min-height: 0; }
+}
+
+/* ==========================================================================
+   Touch and small screens
+
+   Unlayered, for the same reason the dark-mode block above is: these have to
+   beat Tailwind utilities in the markup (`px-4`, `h-7`, `pt-28`), and anything
+   inside `@layer components` loses to a utility no matter how specific it is.
+
+   Three ideas run through the whole section.
+
+   1. `(pointer: coarse)` rather than a width breakpoint. A finger is the same
+      size on a 360px phone and a 1024px tablet, and a 700px-wide desktop
+      window is still driven by a mouse — sizing hit targets by viewport width
+      gets both of those wrong. Width breakpoints are used only where the
+      question really is "how much room is there", further down.
+   2. Nothing here shrinks or hides content. The mobile page is shortened by
+      compacting spacing and deferring the long lists behind a control, never
+      by dropping a figure, a licence, or a caption that the desktop page shows.
+   3. Safe-area insets are additive: portrait resolves every `env()` here to
+      0px, so none of it moves the layout on a device without a notch or a
+      gesture bar.
+   ========================================================================== */
+
+/* ------------------------------------------------------- iOS focus zoom */
+/* Mobile Safari zooms the viewport when a text field smaller than 16px takes
+   focus, and — the part that actually hurts — it does not zoom back out when
+   the field is left. Someone typing a sentence into the demo is stranded at
+   1.4x, scrolling sideways through a page that fit a moment ago.
+   16px on every focusable field is the whole fix, and it is the right one:
+   the alternative, `maximum-scale=1` in the viewport tag, buys the same
+   behaviour by taking pinch zoom away from everyone who needs it.
+   Kept at exactly 16px rather than 1rem so a visitor with a smaller default
+   font size still clears Safari's threshold, which is absolute. */
+@media (pointer: coarse) {
+  .demo-field select,
+  .demo-field textarea,
+  .demo-field input[type='text'],
+  .demo-field input[type='file'],
+  .nf-search input {
+    font-size: 16px;
+  }
+  /* The controls were sized against .86rem text, so the taller line box needs
+     a taller control to keep the demo's one-height rule true. */
+  .demo-field { --control-h: 2.9rem; }
+  .demo-field textarea { min-height: 6.25rem; }
+}
+
+/* --------------------------------------------------------- hit targets */
+/* 44px is Apple's floor and Android's is 48dp; everything below is brought to
+   at least the first. Where a control's drawn size is doing design work — the
+   citation marker, the segmented switch — the *box* stays as it was and only
+   the touchable area grows, so the page does not visibly inflate on a phone. */
+@media (pointer: coarse) {
+  .theme-toggle,
+  .nav-icon-link,
+  .nav-menu summary,
+  .round-link {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+  .nav-shell .btn { min-height: 2.75rem; }
+  .nav-menu-panel { top: 3.4rem; }
+  .nav-menu-panel a { min-height: 2.75rem; display: flex; align-items: center; }
+
+  .back-to-top { height: 3rem; width: 3rem; }
+
+  .nav-links a { min-height: 2.75rem; display: inline-flex; align-items: center; }
+  .demo-langs button,
+  .dataset-filters button,
+  .model-filters button,
+  .model-more button,
+  .list-more button,
+  .map-layers button {
+    min-height: 2.75rem;
+  }
+  .demo-langs { gap: .4rem; }
+  /* The strip is one control, but each segment is its own target, so the
+     segment is what has to clear 44px — not the group around it. */
+  .demo-segmented { padding: .2rem; }
+  .demo-segmented button { min-height: 2.75rem; padding-inline: .85rem; }
+  .demo-status-action,
+  .nf-search-clear { min-height: 2.4rem; }
+  .nf-trace-action button { min-height: 2.75rem; }
+  /* Covers the 404 footer's brand link as well as the link lists. */
+  .site-footer a { min-height: 2.75rem; }
+  .demo-play { height: 2.75rem; width: 2.75rem; }
+  .demo-wave { height: 2.75rem; }
+  .code-sample button { height: 2.75rem; width: 2.75rem; }
+  .brand-lockup { min-height: 2.75rem; }
+
+  /* Standalone links that act as buttons — a section's "Visit the Hub", a
+     card's call to action, a footer destination, a row in the reference list.
+     Links sitting inside a sentence are left alone: they are exempt from the
+     target-size rule precisely because padding them out would break the line
+     they belong to. */
+  .text-link,
+  .footer-links a,
+  .reference-list a { min-height: 2.75rem; }
+  .reference-list a { align-content: center; }
+
+  /* The marker is a superscript and has to stay one. The pseudo-element gives
+     it a 44px-tall touch area without changing a single drawn pixel; siblings
+     in the same sentence are far enough apart not to overlap. */
+  .cite-marker { position: relative; }
+  .cite-marker::after {
+    content: '';
+    position: absolute;
+    inset: -.85rem -.6rem;
+  }
+}
+
+/* Hover styling on a touch device sticks after the tap and reads as a stuck
+   selection, so the lifts and rotations are dropped where there is no cursor.
+   Pressed states below take over the job of confirming the tap. */
+@media (hover: none) {
+  .btn:hover,
+  .dataset-card:hover,
+  .contribute-card:hover,
+  .nf-result:hover,
+  .model-more button:hover,
+  .list-more button:hover,
+  .model-filters button:hover,
+  .btn-small:hover,
+  .demo-run:hover:not(:disabled) { transform: none; }
+  .round-link:hover { transform: none; }
+  .text-link:hover,
+  .footer-links a:hover { gap: .45rem; }
+  .map-compass:hover { transform: none; }
+}
+
+/* A tap needs an answer within the same frame. These are the states hover was
+   providing on a pointer device. */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  .btn:active,
+  .demo-run:active:not(:disabled),
+  .demo-langs button:active,
+  .dataset-filters button:active,
+  .model-filters button:active,
+  .demo-switch button:active,
+  .model-more button:active,
+  .list-more button:active,
+  .round-link:active,
+  .theme-toggle:active,
+  .nav-icon-link:active { transform: scale(.97); }
+  .dataset-card:active,
+  .contribute-card:active,
+  .nf-result:active,
+  .model-row:active { background: rgb(var(--c-ube) / .06); }
+}
+
+/* --------------------------------------------------------- safe areas */
+/* Everything the notch, the rounded corners or the home indicator can reach.
+   `max()` keeps the existing gutter wherever it is already the larger of the
+   two, so portrait is untouched and only a landscape phone actually moves. */
+main,
+.nf-main {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.site-footer {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.site-header {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@media (min-width: 640px) {
+  .site-header {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+}
+@media (min-width: 1024px) {
+  .site-header {
+    padding-left: max(2.25rem, env(safe-area-inset-left));
+    padding-right: max(2.25rem, env(safe-area-inset-right));
+  }
+}
+/* The one element that would otherwise sit under the Android gesture bar and
+   the iPhone's home indicator. */
+.back-to-top {
+  right: max(1.1rem, env(safe-area-inset-right));
+  bottom: calc(1.1rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  .back-to-top {
+    right: max(1.75rem, env(safe-area-inset-right));
+    bottom: calc(1.75rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ------------------------------------------------- length of the page */
+/* A phone renders this page as one column, and one column of everything the
+   desktop grid shows side by side is a very long scroll — long enough that a
+   reader looking for the models has to swipe past the whole dataset catalog to
+   find them. The rules below tighten the rhythm and the two densest cards.
+   The other half of the answer is in App.jsx, which holds the dataset list at
+   three cards behind a "Show all" on small screens, the same way the model
+   table already holds itself at five. */
+@media (max-width: 639px) {
+  /* Section gaps: generous on a desktop, dead space on a phone. */
+  .layer-band { padding-top: 2rem; }
+  .open-section { padding-block: 3.25rem; }
+  .contribute-intro { padding: 1.75rem 0 2rem; }
+  .reference-block { padding-top: 1.5rem; gap: 1.5rem; }
+
+  /* Dataset cards. The fixed row rhythm exists so cards line up across a
+     multi-column grid — in one column there are no neighbours to line up
+     with, so the reserved empty space is pure scroll. */
+  .dataset-card { padding: 1.15rem; border-radius: 1rem; }
+  .dataset-title { margin-top: .9rem; font-size: 1.45rem; }
+  .dataset-desc { margin-top: .6rem; min-height: 0; }
+  .dataset-meta { margin-top: 1.1rem; padding-top: .85rem; gap: .7rem .9rem; }
+  .dataset-foot { margin-top: 1.1rem; }
+  .dataset-grid { gap: .75rem; margin-top: 1.5rem; }
+
+  /* "Behind this demo" is reference material sitting between the invitation
+     and the thing being demonstrated. It keeps every figure and every model
+     id; it just stops being a full-height card on the way past. */
+  .demo-intro { gap: 1.5rem; padding: 1.5rem 1.15rem 1.75rem; }
+  .demo-spec { padding: 1rem; }
+  .demo-spec-list { margin-top: .6rem; }
+  .demo-spec-row { padding: .5rem 0; }
+  .demo-spec-count { font-size: 1.15rem; }
+  .demo-spec-note { margin-top: .7rem; }
+  .demo-workspace { gap: 1.15rem; padding: 1.15rem; }
+  .demo-panel-head { padding: 1.35rem 1.15rem .25rem; }
+  .demo-stage { padding: .9rem; min-height: 13rem; }
+
+  .contribute-card { min-height: 0; padding: 1.25rem; }
+  .contribute-card h3 { margin-top: 2.25rem; }
+  .contribute-card p { min-height: 0; }
+
+  .model-row { padding-inline: 1.15rem; }
+  .model-filters,
+  .model-more { padding-inline: 1.15rem; }
+}
+
+/* The layer list is nine rows of "code · name · downloads" stacked under the
+   map. Two columns halves that run without shrinking any of it.
+
+   Both bounds are load-bearing, and both are about the map's own box rather
+   than the viewport. Past the upper one the panel becomes a narrow sidebar
+   beside the globe (see the @container rules further up), where two columns
+   would be unreadable. Below the lower one, half the width can no longer hold
+   "Kapampangan" — and a list of language names that ellipsises the language
+   names has stopped being a list of language names — so the single column
+   stays. */
+@container (min-width: 17.5rem) and (max-width: 26.99rem) {
+  .map-layers { grid-template-columns: 1fr 1fr; gap: .25rem; }
+  /* Tighter code column, gap and label than the sidebar layout uses: half the
+     width has to hold the longest name without truncating it. */
+  .map-layers button { grid-template-columns: 1.55rem minmax(0, 1fr); gap: .2rem .3rem; }
+  .map-layers button i { font-size: .71rem; }
+  .map-layers button b { grid-column: 2; justify-self: start; }
+}
+
+/* Filter chips wrap to three rows on a phone, which pushes the thing being
+   filtered off screen. One scrollable row keeps the whole set reachable and
+   costs a single row of height. The fade tells the reader there is more. */
+@media (max-width: 639px) {
+  .dataset-filters,
+  .model-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    /* Scroll past the shell's own gutter so the first and last chip can sit
+       flush with the text above them rather than inset from it. */
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 1rem, black calc(100% - 1.5rem), transparent);
+    mask-image: linear-gradient(90deg, transparent, black 1rem, black calc(100% - 1.5rem), transparent);
+  }
+  /* The models panel supplies its own gutter, so this one only widens the
+     fade to match. */
+  .model-filters {
+    margin-inline: 0; padding-inline: 1.15rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 1.15rem, black calc(100% - 1.75rem), transparent);
+    mask-image: linear-gradient(90deg, transparent, black 1.15rem, black calc(100% - 1.75rem), transparent);
+  }
+  .dataset-filters::-webkit-scrollbar,
+  .model-filters::-webkit-scrollbar { display: none; }
+  .dataset-filters button,
+  .model-filters button { flex: none; scroll-snap-align: start; }
+}
+
+/* --------------------------------------------------- the bar on a phone */
+/* Four 44px targets, a wordmark and a call to action do not fit across 320px,
+   and none of them is optional. So the bar sheds its own padding first, then
+   the wordmark's weight, and only at the very bottom hands the theme toggle
+   over to the menu panel — where it is one tap away rather than absent.
+   Sized by width rather than by pointer: this is a question of how much room
+   there is, not of what is doing the pointing. */
+@media (max-width: 419px) {
+  .nav-shell { padding-inline: .55rem; }
+  [data-scrolled='true'] .nav-shell { padding-inline: .5rem; }
+  .nav-shell > div:last-child { gap: .3rem; }
+  .brand-lockup { gap: .45rem; }
+  .brand-lockup > span { font-size: .8rem; }
+}
+@media (max-width: 379px) {
+  .nav-bar-toggle { display: none; }
+  .nav-menu-theme { display: flex; }
+}
+
+/* ------------------------------------------------------------ compositing */
+/* Two of the three backdrop filters on this page cost a mid-range Android real
+   frames and buy nothing on a phone. The map card sits on the hero's flat
+   ground, so there is no detail behind it to blur; the back-to-top button is
+   fixed over a scrolling page, which is the most expensive place a blur can
+   sit. Both are replaced with a slightly more opaque background, which is what
+   the blur was there to imply. The nav keeps its frost — that one is over
+   moving content and is doing visible work.
+   Gated on `hover: none` as well as width so a narrow desktop window keeps
+   both the blur and the hover states these backgrounds would otherwise win
+   against. */
+@media (max-width: 639px) and (hover: none) {
+  .language-map {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(var(--c-paper) / .78);
+  }
+  .back-to-top {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(var(--c-paper) / .96);
+  }
+}
+
+/* --------------------------------------------------- 404 · narrow screens */
+/* The trace readout is three figures and a button on one row. At phone widths
+   the three figures alone need the row, and "Routes matched" was running under
+   the button — which then got taller when it grew into a real touch target.
+   The button takes its own row rather than the labels being abbreviated. */
+@media (max-width: 559px) {
+  .nf-trace-readout { grid-template-columns: repeat(3, minmax(0, auto)); gap: .35rem .7rem; }
+  .nf-trace-action {
+    grid-column: 1 / -1; justify-self: stretch;
+    margin-top: .35rem; border-top: 1px solid var(--border-soft); padding-top: .55rem;
+  }
+  .nf-trace-action button { width: 100%; }
+}
+/* The placeholder is a sentence and the field is a phone-width pill: without
+   this it is cut off mid-word, which reads as a rendering fault rather than as
+   text that did not fit. */
+.nf-search input { text-overflow: ellipsis; }
+
+/* Landscape phones and split screens. The hero already drops its min-height
+   at this height (see above); the map inside it has to come down with it, or
+   a 34rem globe fills a 22rem-tall window on its own. */
+@media (max-height: 34rem) and (orientation: landscape) {
+  .map-globe { height: min(20rem, 62vh); }
+  .demo-stage { position: static; }
+  .nf-hero { min-height: 0; }
+  .nf-trace-stage { height: 6.5rem; }
 }
 
 /* ==========================================================================
